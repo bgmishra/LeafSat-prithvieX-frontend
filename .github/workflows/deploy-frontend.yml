@@ -1,0 +1,103 @@
+name: Deploy Next.js Frontend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-frontend-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to production server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Deploy over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SSH_HOST}" ] || [ -z "${SSH_USER}" ] || [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "Missing one or more required secrets: SSH_HOST, SSH_USER, SSH_PRIVATE_KEY"
+            exit 1
+          fi
+
+          SSH_PORT="${SSH_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${SSH_PORT}" "${SSH_HOST}" >> ~/.ssh/known_hosts
+
+          APP_DIR="/home/prithiviexadmin/PrithviexEnterprise/PrithviEx-Enterprise---frontend"
+
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${SSH_PORT} -o BatchMode=yes -o IdentitiesOnly=yes -o PasswordAuthentication=no -o PreferredAuthentications=publickey -o StrictHostKeyChecking=yes" \
+            --exclude ".git/" \
+            --exclude ".github/" \
+            --exclude ".next/" \
+            --exclude "node_modules/" \
+            --exclude ".env" \
+            --exclude ".env.*" \
+            --exclude "npm-debug.log*" \
+            --exclude "yarn-debug.log*" \
+            --exclude "yarn-error.log*" \
+            ./ "${SSH_USER}@${SSH_HOST}:${APP_DIR}/"
+
+          ssh -i ~/.ssh/deploy_key \
+            -p "${SSH_PORT}" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o PasswordAuthentication=no \
+            -o PreferredAuthentications=publickey \
+            -o StrictHostKeyChecking=yes \
+            "${SSH_USER}@${SSH_HOST}" \
+            bash -se <<'REMOTE_SCRIPT'
+          # Remove -e momentarily because NVM setup scripts can sometimes throw minor non-fatal alerts
+          set -uo pipefail
+
+          # 1. Explicitly load NVM into this non-interactive SSH session
+          export NVM_DIR="$HOME/.nvm"
+          if [ -s "$NVM_DIR/nvm.sh" ]; then
+              source "$NVM_DIR/nvm.sh"
+          else
+              echo "Error: NVM not found at $NVM_DIR/nvm.sh. Make sure NVM is installed on the server."
+              exit 1
+          fi
+
+          # 2. Tell NVM to use Node 24
+          nvm use 24 || nvm install 24 && nvm use 24
+
+          # Bring back strict error checking now that Node is set up
+          set -e
+
+          APP_DIR="/home/prithiviexadmin/PrithviexEnterprise/PrithviEx-Enterprise---frontend"
+          APP_NAME="prithviex-enterprise---frontend"
+
+          cd "${APP_DIR}"
+
+          # rsync excludes generated dependencies and build output, so remove
+          # them explicitly to guarantee every deployment starts clean.
+          rm -rf node_modules .next
+
+          npm ci
+          npm run lint
+          npm run build
+
+          # PM2 also needs to use the correct Node environment, so we run it while NVM is active.
+          # The process definition lives in ecosystem.config.js.
+          pm2 delete "${APP_NAME}" || true
+          pm2 start ecosystem.config.js
+          pm2 save
+          pm2 list
+          REMOTE_SCRIPT
