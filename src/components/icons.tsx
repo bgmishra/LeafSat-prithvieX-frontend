@@ -1,0 +1,127 @@
+type IconProps = {
+  className?: string;
+};
+
+const iconClass = "h-5 w-5";
+
+function Svg({
+  children,
+  className,
+}: IconProps & {
+  children: React.ReactNode;
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={className || iconClass}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="1.8"
+      viewBox="0 0 24 24"
+    >
+      {children}
+    </svg>
+  );
+}
+
+export function HomeIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m3 10 9-7 9 7" />
+      <path d="M5 10v10h14V10" />
+      <path d="M9 20v-6h6v6" />
+    </Svg>
+  );
+}
+
+export function ChartIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="m8 15 3-4 3 2 4-6" />
+    </Svg>
+  );
+}
+
+export function ExtractIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 4h14v5H5z" />
+      <path d="M7 14h10" />
+      <path d="M9 18h6" />
+      <path d="M12 9v9" />
+    </Svg>
+  );
+}
+
+export function DashboardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 5h7v7H4z" />
+      <path d="M13 5h7v4h-7z" />
+      <path d="M13 11h7v8h-7z" />
+      <path d="M4 14h7v5H4z" />
+    </Svg>
+  );
+}
+
+export function OrdersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M7 4h10l2 4v12H5V8z" />
+      <path d="M7 8h10" />
+      <path d="M9 13h6" />
+      <path d="M9 16h4" />
+    </Svg>
+  );
+}
+
+export function WalletIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h15a1 1 0 0 1 1 1v10H5a2 2 0 0 1-2-2V6a2 2 0 0 0 2 2h15" />
+      <path d="M16 13h.01" />
+    </Svg>
+  );
+}
+
+export function UserIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <circle cx="12" cy="8" r="4" />
+    </Svg>
+  );
+}
+
+export function MenuIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </Svg>
+  );
+}
+
+export function CollapseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M15 18 9 12l6-6" />
+    </Svg>
+  );
+}
+
+export function LogoutIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M10 17 15 12l-5-5" />
+      <path d="M15 12H3" />
+      <path d="M21 4v16" />
+    </Svg>
+  );
+}
+
