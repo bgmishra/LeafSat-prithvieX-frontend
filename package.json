@@ -1,5 +1,5 @@
 {
-  "name": "prithviex-enterprise---frontend",
+  "name": "enterprise-prithviex-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,18 +10,38 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.3.4",
-    "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "@hookform/resolvers": "^5.4.0",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@stripe/stripe-js": "^9.10.0",
+    "class-variance-authority": "^0.7.1",
+    "date-fns": "^4.3.0",
+    "highcharts": "^12.6.0",
+    "highcharts-react-official": "^3.2.3",
+    "lucide-react": "^1.16.0",
+    "next": "16.2.6",
+    "ol": "^6.5.0",
+    "ol-ext": "^4.0.38",
+    "ol-plus": "^1.1.31",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.4",
+    "react-datepicker": "^9.1.0",
+    "react-day-picker": "^10.0.1",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.76.1",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "stripe": "^22.3.2",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/ol": "^6.5.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
