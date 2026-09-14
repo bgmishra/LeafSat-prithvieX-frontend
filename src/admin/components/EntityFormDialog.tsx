@@ -6,8 +6,21 @@ import { useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import type { BackendValidationErrors, ResourceConfig, SelectOption } from "@/admin/types/resources";
 import { AdminApiError } from "@/admin/hooks/useApiClient";
-import { CheckboxInput, DateInput, FormMultiSelect, FormSelect, MoneyInput, NumberInput, ReadonlyInput, TextInput } from "./FormFields";
+import { CheckboxInput, DateInput, FileInput, FormMultiSelect, FormSelect, MoneyInput, NumberInput, ReadonlyInput, TextInput } from "./FormFields";
+import { GeometryInput } from "./GeometryInput";
 import { useToast } from "./ToastProvider";
+
+function isFileOrGeometryFieldSatisfied(field: ResourceConfig["fields"][number], values: Record<string, unknown>) {
+  if (values[field.name] instanceof File) {
+    return true;
+  }
+
+  if (field.type === "geometry") {
+    return Boolean(values[field.geojsonFieldName || `${field.name}_geojson`]);
+  }
+
+  return false;
+}
 
 function selectValue(value: unknown) {
   if (value && typeof value === "object") {
@@ -33,6 +46,15 @@ function normalizeDefaults(config: ResourceConfig, item: Record<string, unknown>
       values[field.name] = Boolean(value);
     } else if (field.type === "select") {
       values[field.name] = selectValue(value);
+    } else if (field.type === "file" || field.type === "geometry") {
+      // Files (and drawn geometry) are never returned by the API (write-only), so
+      // there is nothing to prefill on edit. Leaving this undefined lets an edit
+      // submit without a new value keep the existing value on the backend instead
+      // of clearing it.
+      values[field.name] = undefined;
+      if (field.type === "geometry") {
+        values[field.geojsonFieldName || `${field.name}_geojson`] = undefined;
+      }
     } else {
       values[field.name] = value ?? "";
     }
@@ -83,8 +105,23 @@ export function EntityFormDialog({
   const id = item?.[config.idKey || "id"] as string | number | undefined;
 
   async function submit(values: Record<string, unknown>) {
-    setSaving(true);
     setBackendErrors({});
+
+    const missingRequiredFile = !isEdit
+      ? config.fields.find(
+          (field) =>
+            (field.type === "file" || field.type === "geometry") &&
+            field.required &&
+            !isFileOrGeometryFieldSatisfied(field, values),
+        )
+      : undefined;
+
+    if (missingRequiredFile) {
+      setBackendErrors({ [missingRequiredFile.name]: "This field is required." });
+      return;
+    }
+
+    setSaving(true);
 
     try {
       if (isEdit && id !== undefined) {
@@ -198,6 +235,30 @@ export function EntityFormDialog({
             if (field.type === "boolean") {
               return (
                 <CheckboxInput
+                  backendErrors={backendErrors}
+                  disabled={saving}
+                  field={field}
+                  form={form}
+                  key={field.name}
+                />
+              );
+            }
+
+            if (field.type === "file") {
+              return (
+                <FileInput
+                  backendErrors={backendErrors}
+                  disabled={saving}
+                  field={field}
+                  form={form}
+                  key={field.name}
+                />
+              );
+            }
+
+            if (field.type === "geometry") {
+              return (
+                <GeometryInput
                   backendErrors={backendErrors}
                   disabled={saving}
                   field={field}

@@ -44,6 +44,45 @@ function optionFromItem(item: CrudItem, labelKey = "name_label", valueKey = "id"
   };
 }
 
+function hasFileValue(values: CrudItem) {
+  return Object.values(values).some((value) => value instanceof File);
+}
+
+function toFormData(values: CrudItem) {
+  const formData = new FormData();
+
+  Object.entries(values).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+
+    if (value instanceof File) {
+      formData.append(key, value);
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((entry) => formData.append(key, String(entry)));
+      return;
+    }
+
+    if (typeof value === "object") {
+      // e.g. a raw GeoJSON geometry submitted alongside a file elsewhere in the
+      // same request. String(value) would produce "[object Object]".
+      formData.append(key, JSON.stringify(value));
+      return;
+    }
+
+    formData.append(key, typeof value === "boolean" ? (value ? "true" : "false") : String(value));
+  });
+
+  return formData;
+}
+
+function buildRequestBody(values: CrudItem) {
+  return hasFileValue(values) ? toFormData(values) : JSON.stringify(values);
+}
+
 export function useCrudResource(config: ResourceConfig) {
   const { request } = useApiClient();
   const [items, setItems] = useState<CrudItem[]>([]);
@@ -111,7 +150,7 @@ export function useCrudResource(config: ResourceConfig) {
     try {
       await request(config.endpoint, {
         method: "POST",
-        body: JSON.stringify(values),
+        body: buildRequestBody(values),
       });
       await loadItems();
     } finally {
@@ -124,7 +163,7 @@ export function useCrudResource(config: ResourceConfig) {
     try {
       await request(`${config.endpoint}${id}/`, {
         method: "PATCH",
-        body: JSON.stringify(values),
+        body: buildRequestBody(values),
       });
       await loadItems();
     } finally {

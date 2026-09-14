@@ -5,9 +5,11 @@ import type { ResourceConfig } from "@/admin/types/resources";
 import { AdminApiError } from "@/admin/hooks/useApiClient";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
 import { useCrudResource } from "@/admin/hooks/useCrudResource";
+import { BulkUploadDialog } from "./BulkUploadDialog";
 import { ConfirmDeleteDialog } from "./ConfirmDeleteDialog";
 import { DataTable } from "./DataTable";
 import { EntityFormDialog } from "./EntityFormDialog";
+import { GeometryPreviewDialog } from "./GeometryPreviewDialog";
 import { useToast } from "./ToastProvider";
 
 function itemId(config: ResourceConfig, item: Record<string, unknown>) {
@@ -53,6 +55,8 @@ export function AdminResourcePage({ config }: { config: ResourceConfig }) {
   const [editingItem, setEditingItem] = useState<Record<string, unknown> | null>(null);
   const [deletingItem, setDeletingItem] = useState<Record<string, unknown> | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [viewingItem, setViewingItem] = useState<Record<string, unknown> | null>(null);
 
   const visibleItems = useMemo(() => {
     if (!effectiveConfig.normalUserOwnResourceOnly || auth.isAdmin) {
@@ -83,6 +87,10 @@ export function AdminResourcePage({ config }: { config: ResourceConfig }) {
     }
 
     return Boolean(itemId(effectiveConfig, item));
+  }
+
+  function canView() {
+    return Boolean(effectiveConfig.geometryPreview);
   }
 
   function openCreate() {
@@ -150,14 +158,26 @@ export function AdminResourcePage({ config }: { config: ResourceConfig }) {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{effectiveConfig.description}</p>
         </div>
         {canCreate ? (
-          <button
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
-            disabled={auth.loading}
-            onClick={openCreate}
-            type="button"
-          >
-            Create {effectiveConfig.title}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            {effectiveConfig.bulkUpload ? (
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-teal-700 px-4 text-sm font-semibold text-teal-700 transition hover:bg-teal-50 disabled:opacity-60"
+                disabled={auth.loading}
+                onClick={() => setBulkUploadOpen(true)}
+                type="button"
+              >
+                {effectiveConfig.bulkUpload.label || `Bulk Upload ${effectiveConfig.title}`}
+              </button>
+            ) : null}
+            <button
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:opacity-60"
+              disabled={auth.loading}
+              onClick={openCreate}
+              type="button"
+            >
+              Create {effectiveConfig.title}
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -176,11 +196,13 @@ export function AdminResourcePage({ config }: { config: ResourceConfig }) {
       <DataTable
         canDelete={canDelete}
         canEdit={canEdit}
+        canView={canView}
         config={effectiveConfig}
         items={visibleItems}
         loading={auth.loading || crud.loading}
         onDelete={setDeletingItem}
         onEdit={openEdit}
+        onView={setViewingItem}
       />
 
       <EntityFormDialog
@@ -199,6 +221,20 @@ export function AdminResourcePage({ config }: { config: ResourceConfig }) {
         onClose={() => setDeletingItem(null)}
         onConfirm={confirmDelete}
         open={Boolean(deletingItem)}
+      />
+
+      <BulkUploadDialog
+        config={effectiveConfig}
+        onClose={() => setBulkUploadOpen(false)}
+        onUploaded={() => void crud.loadItems()}
+        open={bulkUploadOpen}
+      />
+
+      <GeometryPreviewDialog
+        config={effectiveConfig}
+        item={viewingItem}
+        onClose={() => setViewingItem(null)}
+        open={Boolean(viewingItem)}
       />
     </div>
   );

@@ -10,24 +10,20 @@ import {
   ChartIcon,
   CollapseIcon,
   DashboardIcon,
-  ExtractIcon,
   HomeIcon,
+  LeafIcon,
   LogoutIcon,
   MenuIcon,
   OrdersIcon,
   UserIcon,
-  WalletIcon,
 } from "./icons";
 
 const navigation = [
   { label: "Home", href: "/", icon: HomeIcon, authOnly: false },
-  { label: "Data Catalog", href: "/catalog", icon: ExtractIcon, authOnly: false },
-  { label: "Service Analysis", href: "/service-analysis", icon: ChartIcon, authOnly: false },
-  { label: "Data Extraction", href: "/data-extraction", icon: ExtractIcon, authOnly: false },
-  { label: "CMIP6 Data Extraction", href: "/cmip6-data-extraction", icon: ExtractIcon, authOnly: false },
+  { label: "Leaf-Off Readiness", href: "/leaf-off-readiness", icon: LeafIcon, authOnly: false },
+  { label: "Leaf-Off Forecast", href: "/leaf-off-forecast", icon: ChartIcon, authOnly: false },
   { label: "Dashboard", href: "/dashboard", icon: DashboardIcon, authOnly: true, adminOnly: true },
   { label: "Orders", href: "/orders", icon: OrdersIcon, authOnly: true },
-  { label: "Wallet", href: "/wallet", icon: WalletIcon, authOnly: true },
   { label: "Profile", href: "/profile", icon: UserIcon, authOnly: true },
   { label: "Admin", href: "/admin/services", icon: DashboardIcon, authOnly: true, adminOnly: true },
 ];

@@ -201,6 +201,25 @@ function dateValue(value: unknown) {
   return date.toLocaleString();
 }
 
+function boundarySummaryValue(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return "-";
+  }
+
+  const geometry = value as { type?: string; coordinates?: unknown[] };
+
+  if (geometry.type === "MultiPolygon" && Array.isArray(geometry.coordinates)) {
+    const count = geometry.coordinates.length;
+    return `${count} polygon${count === 1 ? "" : "s"}`;
+  }
+
+  if (geometry.type === "Polygon") {
+    return "1 polygon";
+  }
+
+  return "-";
+}
+
 const serviceTypeField = {
   label: "Service type",
   name: "service_name",
@@ -611,6 +630,72 @@ export const resourceConfigs = {
       token: optionalDecimal,
     }),
     title: "Balance",
+  },
+  trainSections: {
+    columns: [
+      { key: "id", label: "ID" },
+      { key: "railway_id", label: "Railway ID" },
+      { key: "railway_name", label: "Railway name" },
+      { key: "starting_point_name", label: "Starting point" },
+      { key: "end_point_name", label: "End point" },
+      { key: "section_start_name", label: "Section start" },
+      { key: "section_end_name", label: "Section end" },
+      { key: "section_polygon", label: "Boundary", render: (item) => boundarySummaryValue(item.section_polygon) },
+    ],
+    bulkUpload: {
+      accept: ".gpkg",
+      endpoint: "/api/v1/railway-segments/bulk-upload/",
+      fieldName: "file",
+      instructions: [
+        "Geometry (required) — one Polygon or MultiPolygon feature per row/train section.",
+        "railway_id — text, optional",
+        "railway_name — text, optional",
+        "starting_point_name — text, optional",
+        "end_point_name — text, optional",
+        "section_start_name — text, optional",
+        "section_end_name — text, optional",
+        "Column names are matched case-insensitively. Missing or unmatched columns are left blank. Rows with no geometry or an unsupported geometry type are skipped and reported after upload.",
+      ],
+      label: "Bulk Upload Train Sections",
+    },
+    description:
+      "Manage railway train sections. Upload a GeoPackage (.gpkg) with one feature per section to create a single record, or use Bulk Upload for a file containing many sections at once.",
+    geometryPreview: {
+      field: "section_polygon",
+      label: "Train Section Boundary",
+    },
+    endpoint: "/api/v1/railway-segments/",
+    fields: [
+      { label: "Railway ID", name: "railway_id", type: "text" },
+      { label: "Railway name", name: "railway_name", type: "text" },
+      { label: "Starting point", name: "starting_point_name", type: "text" },
+      { label: "End point", name: "end_point_name", type: "text" },
+      { label: "Section start", name: "section_start_name", type: "text" },
+      { label: "Section end", name: "section_end_name", type: "text" },
+      {
+        accept: ".gpkg",
+        geojsonFieldName: "boundary_geojson",
+        helpText:
+          "Upload a GeoPackage (.gpkg) file, or draw the boundary directly on the map. Required when creating; leave blank when editing to keep the existing boundary. If an uploaded file has more than one feature, all of their polygons are merged into this one record — use Bulk Upload instead to create one record per feature.",
+        label: "Boundary",
+        name: "boundary_file",
+        required: true,
+        type: "geometry",
+      },
+    ],
+    key: "train-sections",
+    path: "/admin/train-section",
+    schema: z.object({
+      railway_id: optionalText,
+      railway_name: optionalText,
+      starting_point_name: optionalText,
+      end_point_name: optionalText,
+      section_start_name: optionalText,
+      section_end_name: optionalText,
+      boundary_file: z.instanceof(File).optional(),
+      boundary_geojson: z.unknown().optional(),
+    }),
+    title: "Train Sections",
   },
 } satisfies Record<string, ResourceConfig>;
 

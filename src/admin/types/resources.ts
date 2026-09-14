@@ -30,11 +30,51 @@ export type FieldOptionSource = {
 export type ResourceField = {
   name: string;
   label: string;
-  type: "boolean" | "date" | "text" | "number" | "money" | "select" | "multiselect" | "readonly";
+  type:
+    | "boolean"
+    | "date"
+    | "text"
+    | "number"
+    | "money"
+    | "select"
+    | "multiselect"
+    | "readonly"
+    | "file"
+    | "geometry";
   required?: boolean;
   readonly?: boolean;
   optionSource?: FieldOptionSource;
   options?: SelectOption[];
+  /** "file"/"geometry" fields only: forwarded to the upload <input type="file" accept> attribute. */
+  accept?: string;
+  /** "file"/"geometry" fields only: short instructions shown under the input. */
+  helpText?: string;
+  /**
+   * "geometry" fields only: the form field name that holds a raw GeoJSON
+   * Polygon/MultiPolygon geometry (e.g. drawn on a map) as an alternative to
+   * uploading a file under `name`. Defaults to "{name}_geojson".
+   */
+  geojsonFieldName?: string;
+};
+
+export type ResourceBulkUploadConfig = {
+  /** API endpoint the bulk file is POSTed to (multipart/form-data). */
+  endpoint: string;
+  /** Dialog/button label. Defaults to "Bulk Upload {title}". */
+  label?: string;
+  /** Forwarded to the <input type="file" accept> attribute. */
+  accept?: string;
+  /** Form field name the file is sent under. Defaults to "file". */
+  fieldName?: string;
+  /** Lines describing the expected columns/types, shown in the upload dialog. */
+  instructions?: string[];
+};
+
+export type ResourceGeometryPreviewConfig = {
+  /** Key on the item holding a GeoJSON Polygon/MultiPolygon geometry. */
+  field: string;
+  /** Dialog title. Defaults to "{title} Boundary". */
+  label?: string;
 };
 
 export type ResourceConfig = {
@@ -54,6 +94,8 @@ export type ResourceConfig = {
   canNormalUserMutate?: boolean;
   normalUserOwnResourceOnly?: boolean;
   defaultValues?: Record<string, unknown>;
+  bulkUpload?: ResourceBulkUploadConfig;
+  geometryPreview?: ResourceGeometryPreviewConfig;
 };
 
 export type BackendValidationErrors = Record<string, string[] | string>;

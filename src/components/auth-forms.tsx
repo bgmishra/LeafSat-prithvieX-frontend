@@ -94,12 +94,9 @@ export function LoginForm() {
         <TextField label="Password" name="password" placeholder="Enter your password" required type="password" />
         <SubmitButton loading={loading}>Login</SubmitButton>
       </form>
-      <div className="mt-6 flex flex-col gap-2 text-sm text-slate-600 sm:flex-row sm:justify-between">
+      <div className="mt-6 text-sm text-slate-600">
         <Link className="font-medium text-teal-700 hover:text-teal-800" href="/forgot-password">
           Forgot password?
-        </Link>
-        <Link className="font-medium text-teal-700 hover:text-teal-800" href="/register">
-          Create account
         </Link>
       </div>
     </AuthFrame>

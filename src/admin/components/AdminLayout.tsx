@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BarChart3, CloudSun, Database, FileText, Layers3, Ruler, WalletCards } from "lucide-react";
+import { BarChart3, CloudSun, Database, FileText, Layers3, Ruler, TrainFront, WalletCards } from "lucide-react";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
 import { ToastProvider } from "./ToastProvider";
 
@@ -20,6 +20,7 @@ const adminNavigation = [
   { href: "/admin/temporal-resolution-types", icon: Layers3, label: "Temporal Types" },
   { href: "/admin/spatial-resolution-types", icon: Ruler, label: "Spatial Types" },
   { href: "/admin/balances", icon: WalletCards, label: "Balances" },
+  { href: "/admin/train-section", icon: TrainFront, label: "Train Sections" },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

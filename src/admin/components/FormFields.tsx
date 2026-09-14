@@ -3,7 +3,7 @@
 import type { FieldError, UseFormReturn } from "react-hook-form";
 import type { BackendValidationErrors, ResourceField, SelectOption } from "@/admin/types/resources";
 
-function getFieldError(
+export function getFieldError(
   form: UseFormReturn<Record<string, unknown>>,
   backendErrors: BackendValidationErrors,
   name: string,
@@ -22,7 +22,7 @@ function getFieldError(
   return backendError;
 }
 
-function FieldErrorText({ message }: { message?: string }) {
+export function FieldErrorText({ message }: { message?: string }) {
   if (!message) {
     return null;
   }
@@ -236,6 +236,41 @@ export function CheckboxInput({
         <span className="block text-sm font-medium text-slate-800">{field.label}</span>
         <FieldErrorText message={error} />
       </span>
+    </label>
+  );
+}
+
+export function FileInput({
+  backendErrors,
+  disabled,
+  field,
+  form,
+}: {
+  backendErrors: BackendValidationErrors;
+  disabled?: boolean;
+  field: ResourceField;
+  form: UseFormReturn<Record<string, unknown>>;
+}) {
+  const error = getFieldError(form, backendErrors, field.name);
+  const currentValue = form.watch(field.name);
+  const selectedFile = currentValue instanceof File ? currentValue : undefined;
+
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-slate-800">{field.label}</span>
+      <input
+        accept={field.accept}
+        className="mt-2 block w-full text-sm text-slate-700 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-md file:border-0 file:bg-teal-700 file:px-4 file:text-sm file:font-semibold file:text-white file:transition hover:file:bg-teal-800 disabled:opacity-60"
+        disabled={disabled}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          form.setValue(field.name, file, { shouldDirty: true, shouldValidate: true });
+        }}
+        type="file"
+      />
+      {field.helpText ? <p className="mt-1 text-xs text-slate-500">{field.helpText}</p> : null}
+      {selectedFile ? <p className="mt-1 text-xs text-slate-600">Selected: {selectedFile.name}</p> : null}
+      <FieldErrorText message={error} />
     </label>
   );
 }

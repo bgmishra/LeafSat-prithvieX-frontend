@@ -6,19 +6,23 @@ import type { ResourceConfig } from "@/admin/types/resources";
 export function DataTable({
   canDelete,
   canEdit,
+  canView,
   config,
   items,
   loading,
   onDelete,
   onEdit,
+  onView,
 }: {
   canDelete: (item: Record<string, unknown>) => boolean;
   canEdit: (item: Record<string, unknown>) => boolean;
+  canView?: (item: Record<string, unknown>) => boolean;
   config: ResourceConfig;
   items: Record<string, unknown>[];
   loading: boolean;
   onDelete: (item: Record<string, unknown>) => void;
   onEdit: (item: Record<string, unknown>) => void;
+  onView?: (item: Record<string, unknown>) => void;
 }) {
   const [search, setSearch] = useState("");
   const filteredItems = useMemo(() => {
@@ -76,6 +80,15 @@ export function DataTable({
                     ))}
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
+                        {onView && canView?.(item) ? (
+                          <button
+                            className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
+                            onClick={() => onView(item)}
+                            type="button"
+                          >
+                            View
+                          </button>
+                        ) : null}
                         {canEdit(item) ? (
                           <button
                             className="rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-white"
