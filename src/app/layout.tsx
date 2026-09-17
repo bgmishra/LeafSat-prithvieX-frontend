@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { AppShell } from "@/components/app-shell";
-import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { AuthProvider } from "@/store/auth-provider";
 import "ol/ol.css";
 import "ol-ext/dist/ol-ext.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PrithviEx",
-  description: "Service analysis and data extraction dashboard",
+  title: "LeafSat",
+  description: "Railway leaf-off monitoring and forecasting",
   icons: {
     icon: "/favicon.ico?v=2",
     shortcut: "/favicon.ico?v=2",
@@ -62,7 +61,6 @@ export default function RootLayout({
         <AuthProvider>
           <AppShell>{children}</AppShell>
         </AuthProvider>
-        <CookieConsentBanner />
       </body>
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_ANALYTICS_ID}`}

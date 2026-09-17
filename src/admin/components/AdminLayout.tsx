@@ -3,25 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BarChart3, Building2, CloudSun, Database, FileText, Layers3, Ruler, TrainFront, WalletCards } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
 import { ToastProvider } from "./ToastProvider";
 
 const adminNavigation = [
   { href: "/admin/clients", icon: Building2, label: "Client Companies" },
-  { href: "/admin/services", icon: BarChart3, label: "Services" },
-  { href: "/admin/cmip6-services", icon: CloudSun, label: "CMIP6 Services" },
-  { href: "/admin/service-pages", icon: FileText, label: "Service Pages" },
-  { href: "/admin/legal-documents", icon: FileText, label: "Legal Documents" },
-  { href: "/admin/datasets", icon: Database, label: "Dataset Catalog" },
-  { href: "/admin/data-sources", icon: Database, label: "Data Sources" },
-  { href: "/admin/data-source-model-names", icon: Database, label: "Model Names" },
-  { href: "/admin/atmospheric-pressure-levels-cmip6", icon: Layers3, label: "Pressure Levels" },
-  { href: "/admin/scenario-names", icon: Layers3, label: "Scenario Names" },
-  { href: "/admin/temporal-resolution-types", icon: Layers3, label: "Temporal Types" },
-  { href: "/admin/spatial-resolution-types", icon: Ruler, label: "Spatial Types" },
-  { href: "/admin/balances", icon: WalletCards, label: "Balances" },
-  { href: "/admin/train-section", icon: TrainFront, label: "Train Sections" },
 ];
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -61,8 +48,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         <aside className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm xl:sticky xl:top-24 xl:h-[calc(100vh-8rem)]">
           <div className="border-b border-slate-200 px-3 pb-4 pt-2">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">Admin</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-950">Data Management</h2>
-            <p className="mt-1 text-sm text-slate-500">Catalog and wallet controls</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-950">Administration</h2>
+            <p className="mt-1 text-sm text-slate-500">Client onboarding</p>
           </div>
           <nav className="mt-3 grid gap-1">
             {adminNavigation.map((item) => {

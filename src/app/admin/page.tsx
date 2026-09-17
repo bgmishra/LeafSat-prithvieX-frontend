@@ -1,82 +1,33 @@
 import Link from "next/link";
-import { BarChart3, Database, FileText, Layers3, Ruler, WalletCards } from "lucide-react";
+import { Building2 } from "lucide-react";
 
-const adminLinks = [
-  {
-    description: "Create and edit Markdown landing pages for each service.",
-    href: "/admin/service-pages",
-    icon: FileText,
-    label: "Service Pages",
-  },
-  {
-    description: "Manage service products, pricing, date limits, and temporal choices.",
-    href: "/admin/services",
-    icon: BarChart3,
-    label: "Services",
-  },
-  {
-    description: "Manage source names that can be attached to service products.",
-    href: "/admin/data-sources",
-    icon: Database,
-    label: "Data Sources",
-  },
-  {
-    description: "Manage temporal resolution options available to service products.",
-    href: "/admin/temporal-resolution-types",
-    icon: Layers3,
-    label: "Temporal Types",
-  },
-  {
-    description: "Manage spatial resolution options in meters for service products.",
-    href: "/admin/spatial-resolution-types",
-    icon: Ruler,
-    label: "Spatial Types",
-  },
-  {
-    description: "View and maintain user computation balances and token balances.",
-    href: "/admin/balances",
-    icon: WalletCards,
-    label: "Balances",
-  },
-];
-
-export default function Page() {
+export default function AdminPage() {
   return (
-    <div className="space-y-6">
+    <div className="grid gap-6">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-700">PrithviEx Admin</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Admin Dashboard</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          Choose the catalog or CMS area you want to manage.
+        <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">Administration</p>
+        <h1 className="mt-2 text-3xl font-semibold text-slate-950">LeafSat system admin</h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+          Invite client companies to LeafSat and control their access. Everything inside a client —
+          their team and their train sections — is managed by that company&apos;s own client super
+          admin.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {adminLinks.map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <Link
-              className="group rounded-lg border border-slate-200 bg-white p-5 shadow-sm transition hover:border-teal-300 hover:bg-teal-50"
-              href={item.href}
-              key={item.href}
-            >
-              <div className="flex items-start gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-teal-700 text-white">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-950">{item.label}</h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{item.description}</p>
-                  <span className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition group-hover:bg-teal-800">
-                    Open {item.label}
-                  </span>
-                </div>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
+      <Link
+        className="flex max-w-xl items-start gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:border-teal-300 hover:shadow"
+        href="/admin/clients"
+      >
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700">
+          <Building2 className="size-5" />
+        </span>
+        <span>
+          <span className="block text-lg font-semibold text-slate-950">Client Companies</span>
+          <span className="mt-1 block text-sm leading-6 text-slate-600">
+            Send invitations, see who has completed registration, and suspend or restore access.
+          </span>
+        </span>
+      </Link>
     </div>
   );
 }

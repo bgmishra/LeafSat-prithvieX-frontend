@@ -1,4 +1,5 @@
-import { PageHeader, ProfileContent } from "@/components/workspace-pages";
+import { ProfileContent } from "@/components/account-pages";
+import { PageHeader } from "@/components/ui";
 
 export default function ProfilePage() {
   return (

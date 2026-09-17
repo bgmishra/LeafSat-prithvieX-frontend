@@ -1,4 +1,5 @@
-import { ChangePasswordContent, PageHeader } from "@/components/workspace-pages";
+import { ChangePasswordContent } from "@/components/account-pages";
+import { PageHeader } from "@/components/ui";
 
 export default function ChangePasswordPage() {
   return (

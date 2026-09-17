@@ -16,7 +16,6 @@ import {
   LeafIcon,
   LogoutIcon,
   MenuIcon,
-  OrdersIcon,
   UserIcon,
 } from "./icons";
 
@@ -24,13 +23,11 @@ const navigation = [
   { label: "Home", href: "/", icon: HomeIcon, authOnly: false },
   { label: "Leaf-Off Readiness", href: "/leaf-off-readiness", icon: LeafIcon, authOnly: false },
   { label: "Leaf-Off Forecast", href: "/leaf-off-forecast", icon: ChartIcon, authOnly: false },
-  { label: "Dashboard", href: "/dashboard", icon: DashboardIcon, authOnly: true, adminOnly: true },
-  { label: "Orders", href: "/orders", icon: OrdersIcon, authOnly: true },
   { label: "Manage Sections", href: "/manage-sections", icon: LeafIcon, authOnly: true, sectionManagerOnly: true },
   { label: "Notifications", href: "/notifications", icon: BellIcon, authOnly: true, clientOnly: true, badge: "unread" },
   { label: "Team", href: "/team", icon: UserIcon, authOnly: true, clientSuperAdminOnly: true },
   { label: "Profile", href: "/profile", icon: UserIcon, authOnly: true },
-  { label: "Admin", href: "/admin/services", icon: DashboardIcon, authOnly: true, adminOnly: true },
+  { label: "Admin", href: "/admin/clients", icon: DashboardIcon, authOnly: true, adminOnly: true },
 ];
 
 const shellHiddenRoutePrefixes = [
