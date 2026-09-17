@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BarChart3, CloudSun, Database, FileText, Layers3, Ruler, TrainFront, WalletCards } from "lucide-react";
+import { BarChart3, Building2, CloudSun, Database, FileText, Layers3, Ruler, TrainFront, WalletCards } from "lucide-react";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
 import { ToastProvider } from "./ToastProvider";
 
 const adminNavigation = [
+  { href: "/admin/clients", icon: Building2, label: "Client Companies" },
   { href: "/admin/services", icon: BarChart3, label: "Services" },
   { href: "/admin/cmip6-services", icon: CloudSun, label: "CMIP6 Services" },
   { href: "/admin/service-pages", icon: FileText, label: "Service Pages" },

@@ -28,15 +28,15 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// LeafSat is invitation only: nothing is browsable without an account. The only
+// routes a signed-out visitor may reach are the ones that get them signed in.
 const publicRoutePrefixes = [
   "/login",
   "/register",
   "/forgot-password",
   "/reset-password",
-  "/services",
-  "/catalog",
-  "/shared",
   "/verify-email",
+  "/invitations",
 ];
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
@@ -62,7 +62,7 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 }
 
 export function isPublicPath(pathname: string) {
-  return pathname === "/" || publicRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
+  return publicRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (!isReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm font-medium text-slate-500">
-        Loading PrithivieX...
+        Loading LeafSat...
       </div>
     );
   }

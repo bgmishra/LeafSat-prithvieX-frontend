@@ -634,6 +634,7 @@ export const resourceConfigs = {
   trainSections: {
     columns: [
       { key: "id", label: "ID" },
+      { key: "organization_name", label: "Client", render: (item) => textValue(item.organization_name) },
       { key: "railway_id", label: "Railway ID" },
       { key: "railway_name", label: "Railway name" },
       { key: "starting_point_name", label: "Starting point" },
@@ -655,7 +656,9 @@ export const resourceConfigs = {
         "section_start_name — text, optional",
         "section_end_name — text, optional",
         "Column names are matched case-insensitively. Missing or unmatched columns are left blank. Rows with no geometry or an unsupported geometry type are skipped and reported after upload.",
+        "Every section in the file is assigned to the client company you select below.",
       ],
+      extraFields: ["organization"],
       label: "Bulk Upload Train Sections",
     },
     description:
@@ -666,6 +669,16 @@ export const resourceConfigs = {
     },
     endpoint: "/api/v1/railway-segments/",
     fields: [
+      {
+        label: "Client",
+        name: "organization",
+        optionSource: {
+          endpoint: "/api/auth/system/organizations/",
+          labelKey: "company_name",
+        },
+        required: true,
+        type: "select",
+      },
       { label: "Railway ID", name: "railway_id", type: "text" },
       { label: "Railway name", name: "railway_name", type: "text" },
       { label: "Starting point", name: "starting_point_name", type: "text" },
@@ -686,6 +699,7 @@ export const resourceConfigs = {
     key: "train-sections",
     path: "/admin/train-section",
     schema: z.object({
+      organization: requiredId,
       railway_id: optionalText,
       railway_name: optionalText,
       starting_point_name: optionalText,

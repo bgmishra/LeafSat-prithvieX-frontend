@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ResourceConfig } from "@/admin/types/resources";
+import type { ResourceConfig, SelectOption } from "@/admin/types/resources";
 import { AdminApiError, useApiClient } from "@/admin/hooks/useApiClient";
 import { useToast } from "./ToastProvider";
 
@@ -16,26 +16,35 @@ export function BulkUploadDialog({
   onClose,
   onUploaded,
   open,
+  options = {},
 }: {
   config: ResourceConfig;
   onClose: () => void;
   onUploaded: () => void;
   open: boolean;
+  options?: Record<string, SelectOption[]>;
 }) {
   const { request } = useApiClient();
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  // Values that apply to the whole file rather than to one row, e.g. the client
+  // company every uploaded train section belongs to.
+  const [extraValues, setExtraValues] = useState<Record<string, string>>({});
 
   if (!open || !config.bulkUpload) {
     return null;
   }
 
   const bulkUpload = config.bulkUpload;
+  const extraFields = (bulkUpload.extraFields || [])
+    .map((name) => config.fields.find((field) => field.name === name))
+    .filter((field) => field !== undefined);
 
   function handleClose() {
     setFile(null);
+    setExtraValues({});
     setError("");
     onClose();
   }
@@ -46,12 +55,27 @@ export function BulkUploadDialog({
       return;
     }
 
+    const missingField = extraFields.find(
+      (field) => field.required && !extraValues[field.name],
+    );
+    if (missingField) {
+      setError(`Choose a ${missingField.label.toLowerCase()}.`);
+      return;
+    }
+
     setUploading(true);
     setError("");
 
     try {
       const formData = new FormData();
       formData.append(bulkUpload.fieldName || "file", file);
+
+      for (const field of extraFields) {
+        const value = extraValues[field.name];
+        if (value) {
+          formData.append(field.name, value);
+        }
+      }
 
       const result = await request<BulkUploadResult>(bulkUpload.endpoint, {
         body: formData,
@@ -118,6 +142,30 @@ export function BulkUploadDialog({
         ) : null}
 
         <div className="mt-6 space-y-5">
+          {extraFields.map((field) => (
+            <label className="block" key={field.name}>
+              <span className="text-sm font-medium text-slate-800">{field.label}</span>
+              <select
+                className="mt-2 block min-h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60"
+                disabled={uploading}
+                onChange={(event) =>
+                  setExtraValues((current) => ({ ...current, [field.name]: event.target.value }))
+                }
+                value={extraValues[field.name] || ""}
+              >
+                <option value="">Select {field.label.toLowerCase()}</option>
+                {(options[field.name] || []).map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {field.helpText ? (
+                <p className="mt-1 text-xs text-slate-600">{field.helpText}</p>
+              ) : null}
+            </label>
+          ))}
+
           <label className="block">
             <span className="text-sm font-medium text-slate-800">File</span>
             <input

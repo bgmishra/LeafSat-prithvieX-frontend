@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
 import { useAuth } from "@/store/auth-provider";
+import { useUnreadNotifications } from "@/store/use-unread-notifications";
 import {
+  BellIcon,
   ChartIcon,
   CollapseIcon,
   DashboardIcon,
@@ -24,6 +26,9 @@ const navigation = [
   { label: "Leaf-Off Forecast", href: "/leaf-off-forecast", icon: ChartIcon, authOnly: false },
   { label: "Dashboard", href: "/dashboard", icon: DashboardIcon, authOnly: true, adminOnly: true },
   { label: "Orders", href: "/orders", icon: OrdersIcon, authOnly: true },
+  { label: "Manage Sections", href: "/manage-sections", icon: LeafIcon, authOnly: true, sectionManagerOnly: true },
+  { label: "Notifications", href: "/notifications", icon: BellIcon, authOnly: true, clientOnly: true, badge: "unread" },
+  { label: "Team", href: "/team", icon: UserIcon, authOnly: true, clientSuperAdminOnly: true },
   { label: "Profile", href: "/profile", icon: UserIcon, authOnly: true },
   { label: "Admin", href: "/admin/services", icon: DashboardIcon, authOnly: true, adminOnly: true },
 ];
@@ -45,10 +50,26 @@ function Sidebar({
 }) {
   const pathname = usePathname();
   const { isAuthenticated, logout } = useAuth();
-  const { isAdmin } = useAuthUser({ enabled: isAuthenticated });
+  const { isAdmin, isClientSuperAdmin, isEngineer, organizationRole } = useAuthUser({
+    enabled: isAuthenticated,
+  });
+  const isClientUser = organizationRole !== null;
+  const { count: unreadCount } = useUnreadNotifications(isClientUser);
   const visibleNavigation = navigation.filter((item) => {
     if (item.adminOnly) {
       return isAuthenticated && isAdmin;
+    }
+
+    if (item.clientSuperAdminOnly) {
+      return isAuthenticated && isClientSuperAdmin;
+    }
+
+    if (item.sectionManagerOnly) {
+      return isAuthenticated && (isClientSuperAdmin || isEngineer);
+    }
+
+    if (item.clientOnly) {
+      return isAuthenticated && isClientUser;
     }
 
     return !item.authOnly || isAuthenticated;
@@ -85,7 +106,17 @@ function Sidebar({
               onClick={closeMobile}
               title={collapsed ? item.label : undefined}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <span className="relative shrink-0">
+                <Icon className="h-5 w-5" />
+                {item.badge === "unread" && unreadCount > 0 && collapsed ? (
+                  <span
+                    aria-label={`${unreadCount} unread`}
+                    className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-400 px-1 text-[10px] font-bold leading-none text-slate-950 ring-2 ring-slate-950"
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                ) : null}
+              </span>
               <span
                 className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${
                   collapsed ? "max-w-0 -translate-x-2 opacity-0" : "max-w-[12rem] translate-x-0 opacity-100"
@@ -93,6 +124,11 @@ function Sidebar({
               >
                 {item.label}
               </span>
+              {item.badge === "unread" && unreadCount > 0 && !collapsed ? (
+                <span className="ml-auto min-w-6 rounded-full bg-teal-400 px-1.5 text-center text-xs font-bold leading-5 text-slate-950">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              ) : null}
             </Link>
           );
         })}

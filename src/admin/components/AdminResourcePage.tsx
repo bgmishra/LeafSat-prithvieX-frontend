@@ -228,6 +228,7 @@ export function AdminResourcePage({ config }: { config: ResourceConfig }) {
         onClose={() => setBulkUploadOpen(false)}
         onUploaded={() => void crud.loadItems()}
         open={bulkUploadOpen}
+        options={crud.options}
       />
 
       <GeometryPreviewDialog

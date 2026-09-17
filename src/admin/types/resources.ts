@@ -4,6 +4,9 @@ import type { z } from "zod";
 
 export type UserRole = "admin" | "superadmin" | "user";
 
+/** A user's role inside their client company, as opposed to their system role. */
+export type OrganizationRole = "client_super_admin" | "engineer" | "field_supervisor";
+
 export type AuthUser = {
   id?: number | string;
   email?: string;
@@ -11,6 +14,7 @@ export type AuthUser = {
   name?: string;
   role?: string;
   user_type?: string;
+  organization?: string | null;
   is_staff?: boolean;
   is_superuser?: boolean;
   is_admin?: boolean;
@@ -68,6 +72,12 @@ export type ResourceBulkUploadConfig = {
   fieldName?: string;
   /** Lines describing the expected columns/types, shown in the upload dialog. */
   instructions?: string[];
+  /**
+   * Names of `fields` entries to also collect in the upload dialog and send
+   * alongside the file, for values that apply to every row in it (e.g. which
+   * client company the uploaded train sections belong to).
+   */
+  extraFields?: string[];
 };
 
 export type ResourceGeometryPreviewConfig = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { AuthUser, UserRole } from "@/admin/types/resources";
+import type { AuthUser, OrganizationRole, UserRole } from "@/admin/types/resources";
 import { AdminApiError, useApiClient } from "./useApiClient";
 
 function normalizeRole(user: AuthUser | null): UserRole {
@@ -77,6 +77,18 @@ export function useAuthUser({ enabled = true }: { enabled?: boolean } = {}) {
 
   const role = useMemo(() => normalizeRole(user), [user]);
   const isAdmin = role === "admin" || role === "superadmin";
+  const organizationRole = (user?.role as OrganizationRole | undefined) ?? null;
 
-  return { error, isAdmin, loading, role, user };
+  return {
+    error,
+    isAdmin,
+    isClientSuperAdmin: organizationRole === "client_super_admin",
+    isEngineer: organizationRole === "engineer",
+    isFieldSupervisor: organizationRole === "field_supervisor",
+    loading,
+    organization: user?.organization ?? null,
+    organizationRole,
+    role,
+    user,
+  };
 }
