@@ -155,7 +155,14 @@ export function GeometryInput({
         </div>
       ) : (
         <div className="mt-3 space-y-2">
-          <div aria-label="Draw section boundary" className="h-72 w-full overflow-hidden rounded-md border border-slate-300" ref={mapTargetRef} />
+          {/* Tall enough to trace a section at a useful zoom without panning every
+              few vertices; capped against the viewport so the Clear button and the
+              surrounding form stay reachable on a laptop screen. */}
+          <div
+            aria-label="Draw section boundary"
+            className="h-[28rem] max-h-[70vh] w-full overflow-hidden rounded-md border border-slate-300 sm:h-[34rem]"
+            ref={mapTargetRef}
+          />
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-slate-500">
               {hasDrawnGeometry

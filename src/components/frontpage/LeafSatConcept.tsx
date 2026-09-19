@@ -60,7 +60,7 @@ const ROLES = [
   {
     icon: CheckCircle2,
     role: "Client super admin",
-    body: "Approves or sends back each section, and invites the rest of the team.",
+    body: "Approves or rejects each section, and invites the rest of the team.",
   },
   {
     icon: HardHat,

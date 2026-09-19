@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Inbox, Undo2 } from "lucide-react";
 import { getErrorMessage } from "@/api/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationsRead,
+  markNotificationsUnread,
   type AppNotification,
   type NotificationKind,
 } from "@/lib/notifications";
@@ -25,6 +27,17 @@ const TONES: Record<NotificationKind, string> = {
   section_approved: "bg-emerald-50 text-emerald-700",
   section_rejected: "bg-red-50 text-red-700",
 };
+
+/**
+ * Where a notification takes you.
+ *
+ * One section has a page of its own. A batch does not — "those twelve sections"
+ * is not an address — so it goes to the list, where the recipient can act on
+ * them from whichever tab they are sitting in.
+ */
+function destination(item: AppNotification) {
+  return item.section ? `/manage-sections/${item.section}` : "/manage-sections";
+}
 
 function when(value: string) {
   const created = new Date(value);
@@ -43,6 +56,7 @@ function when(value: string) {
 }
 
 export function NotificationsFeed({ onChanged }: { onChanged?: () => void }) {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,6 +82,38 @@ export function NotificationsFeed({ onChanged }: { onChanged?: () => void }) {
   }, [refresh]);
 
   const unreadCount = notifications.filter((item) => !item.is_read).length;
+
+  /**
+   * Acting on a notification is reading it, so opening one clears it.
+   *
+   * A failure here is swallowed on purpose: the unread flag is bookkeeping and
+   * must never be the reason someone cannot open the thing they clicked. The
+   * next poll of the badge corrects it either way.
+   */
+  async function markRead(item: AppNotification) {
+    if (item.is_read) {
+      return;
+    }
+
+    try {
+      await markNotificationsRead([item.id]);
+      // Update in place rather than refetching: the row is about to leave the
+      // screen, and under the Unread filter a refetch would yank it mid-click.
+      setNotifications((current) =>
+        current.map((each) =>
+          each.id === item.id ? { ...each, is_read: true, read_at: new Date().toISOString() } : each,
+        ),
+      );
+      onChanged?.();
+    } catch {
+      // Opening matters more than the read flag.
+    }
+  }
+
+  async function openNotification(item: AppNotification) {
+    await markRead(item);
+    router.push(destination(item));
+  }
 
   async function run(work: () => Promise<unknown>) {
     setBusy(true);
@@ -165,24 +211,44 @@ export function NotificationsFeed({ onChanged }: { onChanged?: () => void }) {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2 sm:pl-4">
-                  {item.section ? (
-                    <Link
-                      className="text-sm font-medium text-teal-700 hover:text-teal-800"
-                      href="/manage-sections"
-                    >
-                      Open sections
-                    </Link>
-                  ) : null}
-                  {item.is_read ? null : (
-                    <Button
-                      disabled={busy}
-                      onClick={() => run(() => markNotificationsRead([item.id]))}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Mark read
-                    </Button>
-                  )}
+                  <Link
+                    className="text-sm font-medium text-teal-700 hover:text-teal-800"
+                    href={destination(item)}
+                    onClick={(event) => {
+                      // Leave ctrl/cmd/middle-click to the browser so the row can
+                      // still be opened in a new tab; just mark it read behind us.
+                      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                        void markRead(item);
+                        return;
+                      }
+
+                      event.preventDefault();
+                      void openNotification(item);
+                    }}
+                  >
+                    {item.section
+                      ? "Open section"
+                      : item.section_count > 1
+                        ? `Open ${item.section_count} sections`
+                        : // Notifications written before section_count existed
+                          // default to 1 despite covering a batch, so fall back
+                          // to the countless wording rather than "1 sections".
+                          "Open sections"}
+                  </Link>
+                  <Button
+                    disabled={busy}
+                    onClick={() =>
+                      run(() =>
+                        item.is_read
+                          ? markNotificationsUnread([item.id])
+                          : markNotificationsRead([item.id]),
+                      )
+                    }
+                    size="sm"
+                    variant="outline"
+                  >
+                    {item.is_read ? "Mark as unread" : "Mark read"}
+                  </Button>
                 </div>
               </li>
             );

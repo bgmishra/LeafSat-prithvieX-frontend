@@ -10,7 +10,9 @@ import { useAuth } from "@/store/auth-provider";
 export default function ManageSectionsPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const { isClientSuperAdmin, isEngineer, loading } = useAuthUser({ enabled: isAuthenticated });
+  const { isClientSuperAdmin, isEngineer, loading, user } = useAuthUser({
+    enabled: isAuthenticated,
+  });
   const canManage = isClientSuperAdmin || isEngineer;
 
   useEffect(() => {
@@ -46,7 +48,13 @@ export default function ManageSectionsPage() {
         eyebrow="Your company"
         title="Manage sections"
       />
-      <ManageSectionsWorkspace canApprove={isClientSuperAdmin} />
+      <ManageSectionsWorkspace
+        canApprove={isClientSuperAdmin}
+        // Deleting a section is the client super admin's call; the server
+        // enforces it, this just keeps a button nobody can use off the screen.
+        canDelete={isClientSuperAdmin}
+        currentUserEmail={user?.email ?? null}
+      />
     </div>
   );
 }

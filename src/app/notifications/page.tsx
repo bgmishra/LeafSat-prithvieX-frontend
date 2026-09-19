@@ -38,7 +38,7 @@ export default function NotificationsPage() {
   return (
     <div className="grid gap-6 p-4 sm:p-6">
       <PageHeader
-        description="What your colleagues have done with train sections — approval requests, approvals, and sections sent back."
+        description="What your colleagues have done with train sections — approval requests, approvals, and rejections."
         eyebrow="Your company"
         title="Notifications"
       />

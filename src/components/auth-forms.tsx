@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { apiRequest, getErrorMessage } from "@/api/client";
-import { useAuth } from "@/store/auth-provider";
+import { useAuthUser } from "@/admin/hooks/useAuthUser";
+import { useAuth, safeNextPath } from "@/store/auth-provider";
 import { ErrorMessage, SuccessMessage, SubmitButton, TextField } from "./ui";
 
 type TokenResponse = {
@@ -53,7 +54,65 @@ function AuthFrame({
   );
 }
 
-export function LoginForm() {
+/**
+ * What `/login` actually renders.
+ *
+ * Arriving at the login page with a live session in localStorage almost never
+ * means "I want to sign in again" — it means a stale tab, a bookmark, or a
+ * shared link. Showing the form would invite someone to type credentials they
+ * did not need to, so an already-signed-in visitor gets a choice first and only
+ * sees the form once they have actually signed out.
+ */
+export function LoginScreen() {
+  const searchParams = useSearchParams();
+  const { isAuthenticated } = useAuth();
+  const next = safeNextPath(searchParams.get("next"));
+
+  if (isAuthenticated) {
+    return <AlreadySignedIn next={next} />;
+  }
+
+  return <LoginForm next={next} />;
+}
+
+function AlreadySignedIn({ next }: { next: string | null }) {
+  const router = useRouter();
+  const { isAuthenticated, logout } = useAuth();
+  const { loading, user } = useAuthUser({ enabled: isAuthenticated });
+  const destination = next ?? "/";
+
+  return (
+    <AuthFrame
+      description={
+        loading
+          ? "Checking your session..."
+          : `You are already signed in${user?.email ? ` as ${user.email}` : ""}.`
+      }
+      title="Already signed in"
+    >
+      <div className="space-y-3">
+        <button
+          className="min-h-11 w-full rounded-md bg-teal-700 px-4 text-sm font-semibold text-white transition hover:bg-teal-800"
+          onClick={() => router.replace(destination)}
+          type="button"
+        >
+          {next ? "Continue to where you were going" : "Continue to LeafSat"}
+        </button>
+        <button
+          className="min-h-11 w-full rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          // logout() clears the tokens and sends us back to /login, where this
+          // component gives way to the form.
+          onClick={logout}
+          type="button"
+        >
+          Sign out and use a different account
+        </button>
+      </div>
+    </AuthFrame>
+  );
+}
+
+export function LoginForm({ next = null }: { next?: string | null }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -77,7 +136,8 @@ export function LoginForm() {
       });
 
       login(normalizeTokens(data));
-      router.replace("/");
+      // Back to whatever sent them here, if that survived the round trip.
+      router.replace(next ?? "/");
     } catch (caught) {
       console.log("Login error:", caught);
       setError(getErrorMessage(caught));

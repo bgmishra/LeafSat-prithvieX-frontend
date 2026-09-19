@@ -18,6 +18,8 @@ export type AppNotification = {
   /** Set only when the action concerned exactly one section. */
   section: number | null;
   section_label: string;
+  /** How many sections the action covered; 1 means `section` is set. */
+  section_count: number;
   section_status: string | null;
   is_read: boolean;
   read_at: string | null;
@@ -45,6 +47,18 @@ export function getUnreadCount() {
 export function markNotificationsRead(ids: number[]) {
   return apiRequest<{ updated_count: number; unread_count: number }>(
     `${NOTIFICATIONS_URL}mark-read/`,
+    { auth: true, method: "POST", body: JSON.stringify({ ids }) },
+  );
+}
+
+/**
+ * Put notifications back in the unread pile. Deliberately one-at-a-time and
+ * never "all": unread here is a to-do marker the reader sets on something they
+ * want to come back to, not an undo for having read their feed.
+ */
+export function markNotificationsUnread(ids: number[]) {
+  return apiRequest<{ updated_count: number; unread_count: number }>(
+    `${NOTIFICATIONS_URL}mark-unread/`,
     { auth: true, method: "POST", body: JSON.stringify({ ids }) },
   );
 }

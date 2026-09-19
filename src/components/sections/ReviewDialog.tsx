@@ -9,7 +9,7 @@ export type ReviewAction = "approve" | "reject";
 
 /**
  * Where the client super admin records why they signed a batch of sections off
- * or sent it back. A rejection has to say why; an approval remark is optional.
+ * or rejected it. A rejection has to say why; an approval remark is optional.
  */
 export function ReviewDialog({
   action,
@@ -46,7 +46,7 @@ export function ReviewDialog({
     const trimmed = note.trim();
 
     if (isRejection && !trimmed) {
-      setError("Tell the engineer what needs changing before sending it back.");
+      setError("Tell the engineer what needs changing before rejecting it.");
       return;
     }
 
@@ -59,17 +59,17 @@ export function ReviewDialog({
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/50 px-4">
       <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
         <h2 className="text-lg font-semibold text-slate-950">
-          {isRejection ? `Send ${sections} back?` : `Approve ${sections}?`}
+          {isRejection ? `Reject ${sections}?` : `Approve ${sections}?`}
         </h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">
           {isRejection
-            ? "Your remark goes back to whoever drafted the section, so they know what to fix."
+            ? "Your reason goes to whoever drafted the section, so they know what to fix. Only they will see the section until they send it up again."
             : "Approved sections are locked and become visible to your field supervisors. You can leave a remark for the record."}
         </p>
 
         <div className="mt-5">
           <Label htmlFor="review-note">
-            {isRejection ? "Reason for sending back" : "Remark (optional)"}
+            {isRejection ? "Reason for rejection" : "Remark (optional)"}
           </Label>
           <Textarea
             autoFocus
@@ -92,7 +92,7 @@ export function ReviewDialog({
             Cancel
           </Button>
           <Button disabled={loading} onClick={confirm}>
-            {loading ? "Working..." : isRejection ? "Send back" : "Approve"}
+            {loading ? "Working..." : isRejection ? "Reject" : "Approve"}
           </Button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { API_BASE_URL } from "@/config/env";
-import { clearTokens, getTokens, setTokens } from "@/store/auth";
+import { expireSession, getTokens, isTokenExpired, setTokens } from "@/store/auth";
 
 type ApiOptions = RequestInit & {
   auth?: boolean;
@@ -41,10 +41,22 @@ async function parseResponse(response: Response) {
   }
 }
 
-async function refreshAccessToken() {
+/**
+ * In-flight refresh, shared by every caller.
+ *
+ * A page that fires several requests at once would otherwise send several
+ * refreshes with the same token. With rotation on, the first wins and the rest
+ * come back rejected, logging out a user whose session was perfectly good.
+ */
+let pendingRefresh: Promise<string | null> | null = null;
+
+async function requestNewAccessToken() {
   const refresh = getTokens()?.refresh;
 
-  if (!refresh) {
+  // Nothing to refresh with, or the refresh token itself has run out: the
+  // session is over and no round trip will change that.
+  if (!refresh || isTokenExpired(refresh)) {
+    expireSession();
     return null;
   }
 
@@ -57,12 +69,20 @@ async function refreshAccessToken() {
   const data = await parseResponse(response);
 
   if (!response.ok || !data?.access) {
-    clearTokens();
+    expireSession();
     return null;
   }
 
-  setTokens({ access: data.access });
+  setTokens({ access: data.access, refresh: data.refresh });
   return data.access as string;
+}
+
+function refreshAccessToken() {
+  pendingRefresh ??= requestNewAccessToken().finally(() => {
+    pendingRefresh = null;
+  });
+
+  return pendingRefresh;
 }
 
 export async function apiRequest<T>(
