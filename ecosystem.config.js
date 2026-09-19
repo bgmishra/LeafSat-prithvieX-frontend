@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "enterprise-prithviex-frontend",
+      name: "leafsat-prithviex-frontend",
       script: "node_modules/next/dist/bin/next",
       args: "start",
       cwd: "./",
