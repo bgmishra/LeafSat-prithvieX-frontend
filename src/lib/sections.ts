@@ -58,6 +58,18 @@ export type RailwaySection = {
   section_polygon: unknown;
   /** The upload this arrived in, or null when it was created on its own. */
   bulk_upload: number | null;
+  /** Oldest first. Only sent by the detail endpoint, not the list. */
+  events?: SectionEvent[];
+};
+
+/** One step in a section's approval history. */
+export type SectionEvent = {
+  id: number;
+  action: "submitted" | "approved" | "rejected";
+  action_label: string;
+  actor_name: string | null;
+  note: string;
+  created_at: string;
 };
 
 /** One GeoPackage upload and a live tally of where its sections have got to. */

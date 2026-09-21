@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Send, Undo2 } from "lucide-react";
 import { ApiError, getErrorMessage } from "@/api/client";
 import { GeoJsonMapPreview } from "@/admin/components/GeoJsonMapPreview";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
@@ -27,6 +27,7 @@ import {
   submitSections,
   updateSection,
   type RailwaySection,
+  type SectionEvent,
 } from "@/lib/sections";
 
 function text(value: string | null | undefined) {
@@ -56,6 +57,91 @@ function Detail({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
       <dd className="mt-0.5 text-slate-800">{value}</dd>
     </div>
+  );
+}
+
+const EVENT_ICONS = {
+  submitted: Send,
+  approved: CheckCircle2,
+  rejected: Undo2,
+} as const;
+
+const EVENT_TONES = {
+  submitted: "bg-amber-50 text-amber-700",
+  approved: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-red-50 text-red-700",
+} as const;
+
+/**
+ * Every round this section has been through, oldest first.
+ *
+ * The section row itself only holds the latest verdict — each resubmission
+ * clears it — so for anything that has come back more than once this is the only
+ * place the earlier reasons still exist.
+ */
+function History({ events }: { events: SectionEvent[] }) {
+  if (events.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-slate-500">
+        Nothing yet. The first entry appears when this section is sent for approval.
+      </p>
+    );
+  }
+
+  const rejections = events.filter((event) => event.action === "rejected").length;
+
+  return (
+    <>
+      {rejections > 1 ? (
+        <p className="mt-1 text-sm text-slate-500">
+          Sent back {rejections} times — every reason is kept below.
+        </p>
+      ) : null}
+      <ol className="mt-3 space-y-0">
+        {events.map((event, index) => {
+          const Icon = EVENT_ICONS[event.action] ?? Send;
+          const last = index === events.length - 1;
+
+          return (
+            <li className="flex gap-3" key={event.id}>
+              <div className="flex flex-col items-center">
+                <span
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full ${
+                    EVENT_TONES[event.action] ?? "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  <Icon className="size-4" />
+                </span>
+                {/* The rail between entries, omitted after the last one. */}
+                {last ? null : <span className="w-px flex-1 bg-slate-200" />}
+              </div>
+              <div className={last ? "min-w-0 pb-1" : "min-w-0 pb-5"}>
+                <p className="text-sm font-medium text-slate-900">
+                  {event.action_label}
+                  {event.actor_name ? (
+                    <span className="font-normal text-slate-600"> by {event.actor_name}</span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {new Date(event.created_at).toLocaleString()}
+                </p>
+                {event.note ? (
+                  <p
+                    className={`mt-1.5 rounded-md border px-3 py-2 text-sm ${
+                      event.action === "rejected"
+                        ? "border-red-200 bg-red-50 text-red-800"
+                        : "border-slate-200 bg-slate-50 text-slate-700"
+                    }`}
+                  >
+                    &ldquo;{event.note}&rdquo;
+                  </p>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </>
   );
 }
 
@@ -327,6 +413,11 @@ export function SectionDetailWorkspace({ sectionId }: { sectionId: string }) {
                 <p className="mt-1">{section.review_note}</p>
               </div>
             ) : null}
+
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <h2 className="text-sm font-semibold text-slate-950">Approval history</h2>
+              <History events={section.events ?? []} />
+            </div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
               {canEdit ? (
