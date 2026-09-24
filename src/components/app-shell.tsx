@@ -3,32 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useAuthUser } from "@/admin/hooks/useAuthUser";
-import { useAuth } from "@/store/auth-provider";
-import { useUnreadNotifications } from "@/store/use-unread-notifications";
-import {
-  BellIcon,
-  ChartIcon,
-  CollapseIcon,
-  DashboardIcon,
-  HomeIcon,
-  LeafIcon,
-  LogoutIcon,
-  MenuIcon,
-  UserIcon,
-} from "./icons";
-
-const navigation = [
-  { label: "Home", href: "/", icon: HomeIcon, authOnly: false },
-  { label: "Leaf-Off Readiness", href: "/leaf-off-readiness", icon: LeafIcon, authOnly: false },
-  { label: "Leaf-Off Forecast", href: "/leaf-off-forecast", icon: ChartIcon, authOnly: false },
-  { label: "Manage Sections", href: "/manage-sections", icon: LeafIcon, authOnly: true, sectionManagerOnly: true },
-  { label: "Notifications", href: "/notifications", icon: BellIcon, authOnly: true, clientOnly: true, badge: "unread" },
-  { label: "Team", href: "/team", icon: UserIcon, authOnly: true, clientSuperAdminOnly: true },
-  { label: "Profile", href: "/profile", icon: UserIcon, authOnly: true },
-  { label: "Admin", href: "/admin/clients", icon: DashboardIcon, authOnly: true, adminOnly: true },
-];
+import { useEffect, useRef, useState } from "react";
+import { MenuIcon } from "./icons";
+import { readCollapsedState, writeCollapsedState } from "./nav/nav-storage";
+import { Sidebar } from "./nav/Sidebar";
+import { SidebarEdgeToggle } from "./nav/SidebarEdgeToggle";
 
 const shellHiddenRoutePrefixes = [
   "/login",
@@ -38,146 +17,30 @@ const shellHiddenRoutePrefixes = [
   "/verify-email",
 ];
 
-function Sidebar({
-  collapsed,
-  closeMobile,
-}: {
-  collapsed: boolean;
-  closeMobile?: () => void;
-}) {
-  const pathname = usePathname();
-  const { isAuthenticated, logout } = useAuth();
-  const { isAdmin, isClientSuperAdmin, isEngineer, organizationRole } = useAuthUser({
-    enabled: isAuthenticated,
-  });
-  const isClientUser = organizationRole !== null;
-  const { count: unreadCount } = useUnreadNotifications(isClientUser);
-  const visibleNavigation = navigation.filter((item) => {
-    if (item.adminOnly) {
-      return isAuthenticated && isAdmin;
-    }
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-    if (item.clientSuperAdminOnly) {
-      return isAuthenticated && isClientSuperAdmin;
-    }
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
 
-    if (item.sectionManagerOnly) {
-      return isAuthenticated && (isClientSuperAdmin || isEngineer);
-    }
-
-    if (item.clientOnly) {
-      return isAuthenticated && isClientUser;
-    }
-
-    return !item.authOnly || isAuthenticated;
-  });
-
-  return (
-    <div className="flex h-full flex-col bg-slate-950 text-white">
-      <div className={`flex min-h-16 items-center border-b border-white/10 transition-all duration-300 ${collapsed ? "justify-center px-2" : "px-4"}`}>
-        <Image
-          alt="PrithivieX"
-          className={`h-auto object-contain transition-all duration-300 ${collapsed ? "w-10" : "w-40"}`}
-          height={48}
-          priority
-          src={collapsed ? "/images/logo1.png" : "/images/logo.png"}
-          width={160}
-        />
-      </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {visibleNavigation.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href;
-
-          return (
-            <Link
-              className={`flex min-h-11 items-center gap-3 rounded-lg text-sm font-medium transition-all duration-300 ease-out ${
-                collapsed ? "justify-center px-0" : "px-3"
-              } ${
-                active
-                  ? "bg-white text-slate-950"
-                  : "text-slate-300 hover:bg-white/10 hover:text-white"
-              }`}
-              href={item.href}
-              key={item.href}
-              onClick={closeMobile}
-              title={collapsed ? item.label : undefined}
-            >
-              <span className="relative shrink-0">
-                <Icon className="h-5 w-5" />
-                {item.badge === "unread" && unreadCount > 0 && collapsed ? (
-                  <span
-                    aria-label={`${unreadCount} unread`}
-                    className="absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-400 px-1 text-[10px] font-bold leading-none text-slate-950 ring-2 ring-slate-950"
-                  >
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                ) : null}
-              </span>
-              <span
-                className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${
-                  collapsed ? "max-w-0 -translate-x-2 opacity-0" : "max-w-[12rem] translate-x-0 opacity-100"
-                }`}
-              >
-                {item.label}
-              </span>
-              {item.badge === "unread" && unreadCount > 0 && !collapsed ? (
-                <span className="ml-auto min-w-6 rounded-full bg-teal-400 px-1.5 text-center text-xs font-bold leading-5 text-slate-950">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              ) : null}
-            </Link>
-          );
-        })}
-      </nav>
-      <div className="border-t border-white/10 p-3">
-        {isAuthenticated ? (
-          <button
-            className={`flex min-h-11 w-full items-center gap-3 rounded-lg text-sm font-medium text-slate-300 transition-all duration-300 ease-out hover:bg-white/10 hover:text-white ${
-              collapsed ? "justify-center px-0" : "px-3"
-            }`}
-            onClick={logout}
-            title={collapsed ? "Logout" : undefined}
-            type="button"
-          >
-            <LogoutIcon className="h-5 w-5 shrink-0" />
-            <span
-              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${
-                collapsed ? "max-w-0 -translate-x-2 opacity-0" : "max-w-[12rem] translate-x-0 opacity-100"
-              }`}
-            >
-              Logout
-            </span>
-          </button>
-        ) : (
-          <Link
-            className={`flex min-h-11 w-full items-center gap-3 rounded-lg text-sm font-medium text-slate-300 transition-all duration-300 ease-out hover:bg-white/10 hover:text-white ${
-              collapsed ? "justify-center px-0" : "px-3"
-            }`}
-            href="/login"
-            onClick={closeMobile}
-            title={collapsed ? "Login" : undefined}
-          >
-            <UserIcon className="h-5 w-5 shrink-0" />
-            <span
-              className={`overflow-hidden whitespace-nowrap transition-all duration-300 ease-out ${
-                collapsed ? "max-w-0 -translate-x-2 opacity-0" : "max-w-[12rem] translate-x-0 opacity-100"
-              }`}
-            >
-              Login
-            </span>
-          </Link>
-        )}
-      </div>
-    </div>
-  );
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedLoaded, setCollapsedLoaded] = useState(false);
+  // Only fade labels in after a user toggle, never on the first paint.
+  const [hasToggled, setHasToggled] = useState(false);
+  // The edge handle is hovered or keyboard-focused: light the seam it moves.
+  const [edgeHot, setEdgeHot] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileMounted, setMobileMounted] = useState(false);
+  const [lastPathname, setLastPathname] = useState(pathname);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
   const hideShell = shellHiddenRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
   const mobileContentOffset = pathname === "/" ? "" : "pt-16";
   const mobileDrawerDurationMs = 300;
@@ -192,6 +55,61 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const closeMobileDrawer = () => {
     setMobileOpen(false);
   };
+
+  const toggleCollapsed = () => {
+    setHasToggled(true);
+    setCollapsed((value) => !value);
+  };
+
+  // Route changes close the drawer (as well as link clicks via closeMobile).
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+
+    if (mobileOpen) {
+      setMobileOpen(false);
+    }
+  }
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const stored = readCollapsedState();
+
+      if (stored !== null) {
+        setCollapsed(stored);
+      }
+
+      setCollapsedLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (collapsedLoaded) {
+      writeCollapsedState(collapsed);
+    }
+  }, [collapsed, collapsedLoaded]);
+
+  // "[" toggles the desktop sidebar, except while typing.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (
+        event.key !== "[" ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isTypingTarget(event.target) ||
+        !window.matchMedia("(min-width: 1024px)").matches
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      setHasToggled(true);
+      setCollapsed((value) => !value);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (mobileOpen || !mobileMounted) {
@@ -220,37 +138,86 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [mobileMounted]);
 
+  // Drawer focus: close button on open, Esc closes, back to the hamburger on close.
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const menuButton = menuButtonRef.current;
+    drawerRef.current?.querySelector<HTMLElement>("[data-drawer-close]")?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      menuButton?.focus();
+    };
+  }, [mobileOpen]);
+
+  const trapDrawerFocus = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Tab" || !drawerRef.current) {
+      return;
+    }
+
+    const focusable = Array.from(drawerRef.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+      (element) => !element.closest("[inert]"),
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (!first || !last) {
+      return;
+    }
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   if (hideShell) {
     return <>{children}</>;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 outDivMain">
+      {/* Width, padding and the edge handle share one duration and curve, and
+          only animate after a user toggle, so the stored state lands without a slide. */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 hidden border-r border-slate-200 transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:block ${
-          collapsed ? "w-20" : "w-72"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 hidden overflow-x-hidden border-r border-white/5 bg-slate-950 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-0.5 after:bg-teal-400/50 after:opacity-0 after:transition-opacity after:duration-150 after:ease-out after:content-[''] data-[edge-hot=true]:after:opacity-100 motion-reduce:after:transition-none lg:block ${
+          hasToggled ? "transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none" : ""
+        } ${collapsed ? "w-20" : "w-64"}`}
+        data-animate-labels={hasToggled ? "true" : undefined}
+        data-edge-hot={edgeHot ? "true" : undefined}
+        id="app-sidebar"
       >
         <Sidebar collapsed={collapsed} />
-        <button
-          aria-label="Collapse sidebar"
-          className="customStyleButtonCol group absolute -right-4 top-5 z-10 hidden h-9 w-9 items-center justify-center rounded-full border border-[#1839cd] bg-[#1839cd] text-white shadow-md ring-4 ring-slate-50 transition duration-200 hover:-right-5 hover:scale-105 hover:border-[#1839cd] hover:bg-[#1839cd] hover:text-white hover:shadow-lg active:scale-95 lg:inline-flex"
-          onClick={() => setCollapsed((value) => !value)}
-          type="button"
-        >
-          <span className="absolute inset-0 rounded-full bg-teal-400/20 opacity-0 blur-md transition group-hover:opacity-100" />
-          <CollapseIcon className={`relative h-5 w-5 transition duration-200 group-hover:drop-shadow ${collapsed ? "rotate-180" : ""}`} />
-          <span className="pointer-events-none absolute left-full ml-3 hidden whitespace-nowrap rounded-md border border-slate-200 bg-slate-950 px-2.5 py-1.5 text-xs font-semibold text-white opacity-0 shadow-lg transition group-hover:translate-x-1 group-hover:opacity-100 xl:block">
-            {collapsed ? "Expand" : "Collapse"}
-          </span>
-        </button>
       </aside>
+      <SidebarEdgeToggle
+        animate={hasToggled}
+        collapsed={collapsed}
+        onHotChange={setEdgeHot}
+        onToggle={toggleCollapsed}
+      />
 
       <header className="mobileScreenHeader fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-center border-b border-slate-200 bg-white/95 px-4 text-slate-950 shadow-sm backdrop-blur lg:hidden">
         <button
           aria-label="Open navigation"
+          aria-expanded={mobileOpen}
           className="absolute left-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 active:scale-95"
           onClick={openMobileDrawer}
+          ref={menuButtonRef}
           type="button"
         >
           <MenuIcon />
@@ -266,22 +233,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {mobileMounted ? (
         <div
-          className={`fixed inset-0 z-50 transition-opacity duration-300 lg:hidden ${
+          className={`fixed inset-0 z-50 transition-opacity duration-300 motion-reduce:transition-none lg:hidden ${
             mobileOpen ? "opacity-100" : "opacity-0"
           }`}
         >
-          <button
-            aria-label="Close navigation"
-            className={`absolute inset-0 bg-slate-950/50 transition-opacity duration-300 ${
+          <div
+            aria-hidden="true"
+            className={`absolute inset-0 bg-slate-950/50 backdrop-blur-[2px] transition-opacity duration-300 motion-reduce:transition-none ${
               mobileOpen ? "opacity-100" : "opacity-0"
             }`}
             onClick={closeMobileDrawer}
-            type="button"
           />
           <aside
-            className={`relative h-full w-72 max-w-[82vw] transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+            aria-label="Navigation"
+            aria-modal="true"
+            className={`relative h-full w-72 max-w-[85vw] transform transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform motion-reduce:transition-none ${
               mobileOpen ? "translate-x-0" : "-translate-x-full"
             }`}
+            onKeyDown={trapDrawerFocus}
+            ref={drawerRef}
+            role="dialog"
           >
             <Sidebar collapsed={false} closeMobile={closeMobileDrawer} />
           </aside>
@@ -289,7 +260,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : null}
 
       <div
-        className={`${mobileContentOffset} transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:pt-0 ${collapsed ? "lg:pl-20" : "lg:pl-72"}`}
+        className={`${mobileContentOffset} ${
+          hasToggled ? "transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none" : ""
+        } lg:pt-0 ${collapsed ? "lg:pl-20" : "lg:pl-64"}`}
       >
         <main className="mx-auto flex w-full flex-col gap-10 px-1 py-1 sm:px-0 lg:px-0 lg:pt-0">
           {children}

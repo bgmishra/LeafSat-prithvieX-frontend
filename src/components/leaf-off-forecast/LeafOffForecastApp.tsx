@@ -1,12 +1,17 @@
 "use client";
 
-import { TrainSectionMapWorkspace } from "@/components/leaf-off/TrainSectionMapWorkspace";
+import { ToastProvider } from "@/admin/components/ToastProvider";
+import { ModelProductProvider } from "@/components/leaf-off-readiness/model-product";
+import { FORECAST_PRODUCT } from "./forecast-product";
+import { ForecastRunModelWorkspace } from "./ForecastRunModelWorkspace";
 
+/** Leaf-Off Forecast "Run Forecast Model" page (also the /leaf-off-forecast landing). */
 export function LeafOffForecastApp() {
   return (
-    <TrainSectionMapWorkspace
-      description="Forecast when a train section is expected to reach leaf-off conditions."
-      title="Leaf-Off Forecast Configuration"
-    />
+    <ToastProvider>
+      <ModelProductProvider product={FORECAST_PRODUCT}>
+        <ForecastRunModelWorkspace />
+      </ModelProductProvider>
+    </ToastProvider>
   );
 }

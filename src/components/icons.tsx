@@ -1,4 +1,4 @@
-type IconProps = {
+export type IconProps = {
   className?: string;
 };
 
@@ -125,11 +125,25 @@ export function MenuIcon(props: IconProps) {
   );
 }
 
-export function CollapseIcon(props: IconProps) {
+/**
+ * Chevron for the sidebar edge handle. Drawn at stroke 2.25 (1.5px at 16px) so
+ * it holds its weight on the 28px disc; it is centred on x=12, so rotating it
+ * 180deg keeps it in place.
+ */
+export function SidebarEdgeChevronIcon({ className }: IconProps) {
   return (
-    <Svg {...props}>
-      <path d="M15 18 9 12l6-6" />
-    </Svg>
+    <svg
+      aria-hidden="true"
+      className={className || iconClass}
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2.25"
+      viewBox="0 0 24 24"
+    >
+      <path d="m14.5 7-5 5 5 5" />
+    </svg>
   );
 }
 
@@ -143,3 +157,48 @@ export function LogoutIcon(props: IconProps) {
   );
 }
 
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function ChevronRightIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </Svg>
+  );
+}
+
+export function SectionsIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3 3 8l9 5 9-5-9-5Z" />
+      <path d="m3 13 9 5 9-5" />
+    </Svg>
+  );
+}
+
+export function UsersIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M16 21a7 7 0 0 0-14 0" />
+      <circle cx="9" cy="8" r="4" />
+      <path d="M16 3.5a4 4 0 0 1 0 7.5" />
+      <path d="M22 21a7 7 0 0 0-4-6.3" />
+    </Svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
+    </Svg>
+  );
+}

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Inbox, Undo2 } from "lucide-react";
+import { CheckCircle2, Inbox, Satellite, Share2, Undo2 } from "lucide-react";
 import { getErrorMessage } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage, Panel } from "@/components/ui";
@@ -20,12 +20,16 @@ const ICONS: Record<NotificationKind, typeof Inbox> = {
   section_submitted: Inbox,
   section_approved: CheckCircle2,
   section_rejected: Undo2,
+  model_run_finished: Satellite,
+  result_shared: Share2,
 };
 
 const TONES: Record<NotificationKind, string> = {
   section_submitted: "bg-amber-50 text-amber-700",
   section_approved: "bg-emerald-50 text-emerald-700",
   section_rejected: "bg-red-50 text-red-700",
+  model_run_finished: "bg-teal-50 text-teal-700",
+  result_shared: "bg-sky-50 text-sky-700",
 };
 
 /**
@@ -36,6 +40,14 @@ const TONES: Record<NotificationKind, string> = {
  * them from whichever tab they are sitting in.
  */
 function destination(item: AppNotification) {
+  // Each model product has its own results pages; without a model_type it is readiness.
+  const results = item.model_type === "leaf_off_forecast" ? "/leaf-off-forecast/results" : "/leaf-off-readiness/results";
+  if (item.kind === "result_shared" && item.model_run && item.section) {
+    return `${results}?run=${item.model_run}&section=${item.section}`;
+  }
+  if (item.kind === "model_run_finished" && item.model_run) {
+    return `${results}?run=${item.model_run}`;
+  }
   return item.section ? `/manage-sections/${item.section}` : "/manage-sections";
 }
 
@@ -226,7 +238,11 @@ export function NotificationsFeed({ onChanged }: { onChanged?: () => void }) {
                       void openNotification(item);
                     }}
                   >
-                    {item.section
+                    {item.kind === "result_shared"
+                      ? "View map"
+                      : item.kind === "model_run_finished"
+                      ? "View results"
+                      : item.section
                       ? "Open section"
                       : item.section_count > 1
                         ? `Open ${item.section_count} sections`

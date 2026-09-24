@@ -1,12 +1,17 @@
 "use client";
 
-import { TrainSectionMapWorkspace } from "@/components/leaf-off/TrainSectionMapWorkspace";
+import { ToastProvider } from "@/admin/components/ToastProvider";
+import { LeafOffRunModelWorkspace } from "./LeafOffRunModelWorkspace";
 
+/**
+ * Leaf-Off Readiness "Run Model" page (also the /leaf-off-readiness landing).
+ * Multi-selects approved sections and starts readiness runs. Leaf-Off Forecast
+ * reuses the same workspace with its own product config and a horizon control.
+ */
 export function LeafOffReadinessApp() {
   return (
-    <TrainSectionMapWorkspace
-      description="Check whether a train section is ready for a leaf-off vegetation survey."
-      title="Leaf-Off Readiness Configuration"
-    />
+    <ToastProvider>
+      <LeafOffRunModelWorkspace />
+    </ToastProvider>
   );
 }

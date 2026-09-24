@@ -240,7 +240,7 @@ export function TeamWorkspace() {
         ) : (
           <InvitationList
             busyId={busyId}
-            emptyMessage="You have not invited anyone yet."
+            emptyMessage="No pending invitations. People who have set their password appear under team members."
             invitations={invitations}
             onResend={(invitation) => runInvitationAction(invitation, resendTeamInvitation)}
             onRevoke={(invitation) => runInvitationAction(invitation, revokeTeamInvitation)}

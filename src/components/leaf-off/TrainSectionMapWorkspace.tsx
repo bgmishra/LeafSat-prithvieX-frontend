@@ -1,34 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { apiRequest, getErrorMessage } from "@/api/client";
+import { getErrorMessage } from "@/api/client";
 import { GeoJsonMapPreview } from "@/admin/components/GeoJsonMapPreview";
 import { Alert } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Select, SelectOption } from "@/components/ui/select";
+import { listSections, type RailwaySection } from "@/lib/sections";
 
-type RailwaySegment = {
-  id: number;
-  railway_id: string;
-  railway_name: string;
-  starting_point_name: string;
-  end_point_name: string;
-  section_start_name: string;
-  section_end_name: string;
-  section_polygon: unknown;
-};
-
-function unwrapList(data: unknown): RailwaySegment[] {
-  if (Array.isArray(data)) {
-    return data as RailwaySegment[];
-  }
-
-  if (data && typeof data === "object" && Array.isArray((data as { results?: unknown }).results)) {
-    return (data as { results: RailwaySegment[] }).results;
-  }
-
-  return [];
-}
+type RailwaySegment = RailwaySection;
 
 function segmentLabel(segment: RailwaySegment) {
   const name = segment.railway_name || segment.railway_id || `Section #${segment.id}`;
@@ -62,10 +42,10 @@ export function TrainSectionMapWorkspace({
   useEffect(() => {
     let active = true;
 
-    apiRequest<unknown>("/api/v1/railway-segments/")
-      .then((data) => {
+    listSections("approved")
+      .then((approvedSections) => {
         if (active) {
-          setSegments(unwrapList(data));
+          setSegments(approvedSections);
         }
       })
       .catch((caught) => {
@@ -126,7 +106,7 @@ export function TrainSectionMapWorkspace({
               </Select>
               {!loadingSegments && segments.length === 0 ? (
                 <p className="mt-1 text-xs text-slate-500">
-                  No train sections exist yet. Add one from the admin Train Sections page.
+                  No approved train sections are available yet. Add and approve a section from the Manage Sections page.
                 </p>
               ) : null}
             </label>

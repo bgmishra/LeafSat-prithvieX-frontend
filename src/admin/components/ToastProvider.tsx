@@ -18,7 +18,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const notify = useCallback((toast: Omit<Toast, "id">) => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
 
     setToasts((current) => [...current, { ...toast, id }]);
     window.setTimeout(() => {
@@ -31,7 +31,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed right-4 top-4 z-[80] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3">
+      <div
+        aria-live="polite"
+        className="fixed right-4 top-4 z-[80] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3"
+        role="status"
+      >
         {toasts.map((toast) => (
           <div
             className={`rounded-lg border px-4 py-3 text-sm shadow-lg ${

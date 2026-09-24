@@ -1,13 +1,16 @@
 "use client";
 
 import { apiRequest } from "@/api/client";
+import type { ModelType } from "@/lib/model-runs";
 
 const NOTIFICATIONS_URL = "/api/v1/notifications/";
 
 export type NotificationKind =
   | "section_submitted"
   | "section_approved"
-  | "section_rejected";
+  | "section_rejected"
+  | "model_run_finished"
+  | "result_shared";
 
 export type AppNotification = {
   id: number;
@@ -21,6 +24,10 @@ export type AppNotification = {
   /** How many sections the action covered; 1 means `section` is set. */
   section_count: number;
   section_status: string | null;
+  /** Set for `model_run_finished` / `result_shared`: the run whose results the notice points at. */
+  model_run: number | null;
+  /** That run's product; null without a run (absent on older servers, treated as readiness). */
+  model_type?: ModelType | null;
   is_read: boolean;
   read_at: string | null;
   created_at: string;

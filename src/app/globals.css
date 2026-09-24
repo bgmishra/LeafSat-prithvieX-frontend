@@ -78,6 +78,12 @@ body {
   background: #ffffff;
 }
 
+/* Keyboard focus must stay visible on OpenLayers / ol-ext map controls. */
+.ol-control button:focus-visible {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
 button,
 a,
 input,
@@ -519,10 +525,45 @@ textarea {
 }
 
 
-.customStyleButtonCol{
-  height: 30px !important;
-  width: 30px !important;
-  background-color:#020618;
+/* Sidebar navigation motion (no tw-animate in this project). */
+@keyframes nav-fade-zoom-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes nav-fade-zoom-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+@keyframes nav-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.nav-flyout[data-state="open"],
+.nav-tooltip[data-state="delayed-open"],
+.nav-tooltip[data-state="instant-open"] {
+  animation: nav-fade-zoom-in 150ms ease-out;
+}
+
+.nav-flyout[data-state="closed"],
+.nav-tooltip[data-state="closed"] {
+  animation: nav-fade-zoom-out 150ms ease-in;
+}
+
+/* After a collapse toggle, labels fade in once the rail has mostly widened,
+   so text never shows clipped mid-word. */
+#app-sidebar[data-animate-labels="true"] .nav-label {
+  animation: nav-fade-in 150ms ease-out 150ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-flyout,
+  .nav-tooltip,
+  #app-sidebar[data-animate-labels="true"] .nav-label {
+    animation: none !important;
+  }
 }
 
 /* .outDivMain{

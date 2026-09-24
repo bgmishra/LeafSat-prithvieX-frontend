@@ -124,6 +124,62 @@ export async function apiRequest<T>(
   return data as T;
 }
 
+/**
+ * Resolve a URL the API handed us (e.g. a WMS proxy `url`) onto the API's own
+ * origin, so the bearer token is only ever sent to our backend.
+ *
+ * The backend builds absolute URLs from the incoming request, which behind a
+ * TLS-terminating proxy can come back as plain http or as an internal host
+ * name. Relative paths and same-origin URLs are used as they are; an `/api/`
+ * path on any other origin is rebased onto API_BASE_URL; anything else is
+ * refused rather than leaking the token.
+ */
+export function resolveApiUrl(url: string) {
+  const apiOrigin = new URL(API_BASE_URL).origin;
+  const parsed = new URL(url, API_BASE_URL);
+
+  if (parsed.origin === apiOrigin) {
+    return parsed.toString();
+  }
+
+  if (parsed.pathname.startsWith("/api/")) {
+    return `${API_BASE_URL}${parsed.pathname}${parsed.search}`;
+  }
+
+  throw new Error(`Refusing to send credentials to ${parsed.origin}.`);
+}
+
+/**
+ * `fetch` with the stored access token, refreshing it once on a 401 exactly as
+ * `apiRequest` does. Returns the raw Response, for callers that need a binary
+ * body — map images from the WMS proxy, which an `<img>` tag cannot fetch
+ * because it cannot send an Authorization header.
+ */
+export async function authorizedFetch(
+  url: string,
+  init: RequestInit = {},
+  retried = false,
+): Promise<Response> {
+  const target = resolveApiUrl(url);
+  const headers = new Headers(init.headers);
+  const access = getTokens()?.access;
+
+  if (access) {
+    headers.set("Authorization", `Bearer ${access}`);
+  }
+
+  const response = await fetch(target, { ...init, headers });
+
+  if (response.status === 401 && !retried) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      return authorizedFetch(url, init, true);
+    }
+  }
+
+  return response;
+}
+
 export function getErrorMessage(error: unknown) {
   if (error instanceof ApiError && error.payload) {
     const fieldErrors = Object.entries(error.payload)
