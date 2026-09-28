@@ -60,3 +60,5 @@ inside .env.local put this
 ```bash
 NEXT_PUBLIC_API_BASE_URL=https://api.prithviex.com
 ```
+
+
