@@ -17,7 +17,7 @@ import ImageWMS from "ol/source/ImageWMS";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import LayerSwitcherImage from "ol-ext/control/LayerSwitcherImage.js";
-import { UK_EXTENT_LONLAT, createBaseLayers, fitDuration } from "@/components/leaf-off/map-base-layers";
+import { createBaseLayers, fitDuration, fitToUnitedKingdom } from "@/components/leaf-off/map-base-layers";
 import type { LonLatBbox, WmsLayerInfo, WmsLayerKind } from "@/lib/model-runs";
 import { bandFor, useModelProduct } from "./model-product";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,25 @@ import { authorizedImageLoadFunction, fetchRasterValue } from "@/lib/wms";
 export type LayerVisibility = Record<WmsLayerKind | "outline", boolean>;
 
 type LayerStatus = "idle" | "loading" | "loaded" | "error";
+
+/**
+ * One WMS layer on the map. `groupKey` records which section it was built for,
+ * so a swap can tell "the next pass of the same section" — worth holding on to
+ * while the new image loads — from "a different section altogether".
+ */
+type WmsEntry = { groupKey: string; layer: ImageLayer; source: ImageWMS };
+
+type WmsRegistry = Partial<Record<WmsLayerKind, WmsEntry>>;
+
+/**
+ * How long a changed WMS layer waits before it is requested.
+ *
+ * Dragging the imagery slider walks through every pass between where the drag
+ * started and where it ends. Without a pause each of those would cost the map
+ * server a render, so the request is held until the drag settles; short enough
+ * that a click on the next-pass button still feels immediate.
+ */
+const SWAP_DEBOUNCE_MS = 180;
 
 const LAYER_NAMES: Record<WmsLayerKind, string> = {
   readiness: "readiness map",
@@ -116,7 +135,7 @@ export function ReadinessResultMap({
   const outlineSourceRef = useRef<VectorSource | null>(null);
   const outlineLayerRef = useRef<VectorLayer | null>(null);
   const markerRef = useRef<Overlay | null>(null);
-  const wmsRef = useRef<Partial<Record<WmsLayerKind, { layer: ImageLayer; source: ImageWMS }>>>({});
+  const wmsRef = useRef<WmsRegistry>({});
   const visibilityRef = useRef(visibility);
   const opacityRef = useRef(opacity);
   const extentRef = useRef<Extent | null>(null);
@@ -166,7 +185,7 @@ export function ReadinessResultMap({
       target,
       view: new View({ center: [0, 0], zoom: 2 }),
     });
-    map.getView().fit(transformExtent(UK_EXTENT_LONLAT, "EPSG:4326", "EPSG:3857"), { padding: [24, 24, 24, 24] });
+    fitToUnitedKingdom(map);
     (fullScreen as unknown as { element: HTMLElement }).element.querySelector("button")?.setAttribute("aria-label", "Toggle full screen");
 
     const layerSwitcher = new LayerSwitcherImage({ collapsed: false });
@@ -293,11 +312,13 @@ export function ReadinessResultMap({
   }, [bboxKey, outlineKey, zoomNonce]);
 
   // One effect per WMS layer, keyed by its URL and layer name, so polling the
-  // run (new objects, same values) never reloads imagery.
-  useWmsLayer("readiness", readinessUrl, readinessLayerName, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
-  useWmsLayer("sentinel2", s2Url, s2LayerName, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
-  useWmsLayer("landsat", landsatUrl, landsatLayerName, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
-  useWmsLayer("forecast", forecastUrl, forecastLayerName, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
+  // run (new objects, same values) never reloads imagery. The bbox doubles as
+  // the group key: it changes when the viewer moves to another section, and
+  // that is the one swap that must not hold the old image over the new view.
+  useWmsLayer("readiness", readinessUrl, readinessLayerName, bboxKey, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
+  useWmsLayer("sentinel2", s2Url, s2LayerName, bboxKey, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
+  useWmsLayer("landsat", landsatUrl, landsatLayerName, bboxKey, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
+  useWmsLayer("forecast", forecastUrl, forecastLayerName, bboxKey, mapRef, wmsRef, visibilityRef, opacityRef, setStatus);
 
   useEffect(() => {
     const layers = wmsRef.current;
@@ -412,43 +433,138 @@ export function ReadinessResultMap({
   );
 }
 
+/**
+ * Keep one kind of WMS layer on the map, rebuilt whenever its URL or layer
+ * name changes.
+ *
+ * Tearing the old layer down before the new one exists blanks the map for as
+ * long as the map server takes to answer, which turns a scrub through the
+ * imagery timeline into a strobe. So the layer that is on screen stays there,
+ * underneath the incoming one, until the incoming one has actually painted —
+ * a WMS layer draws nothing until its image arrives, so the two share a
+ * z-index quite happily and the handover is invisible.
+ *
+ * The layer on screen therefore outlives the effect that created it, and
+ * `wmsRef` — which opacity, visibility, click-to-read and retry all act on —
+ * always points at it rather than at whatever is still in flight.
+ */
 function useWmsLayer(
   kind: WmsLayerKind,
   url: string,
   layerName: string,
+  /** Identifies the section these layers belong to; see `WmsEntry`. */
+  groupKey: string,
   mapRef: React.RefObject<Map | null>,
-  wmsRef: React.RefObject<Partial<Record<WmsLayerKind, { layer: ImageLayer; source: ImageWMS }>>>,
+  wmsRef: React.RefObject<WmsRegistry>,
   visibilityRef: React.RefObject<LayerVisibility>,
   opacityRef: React.RefObject<number>,
   setStatus: React.Dispatch<React.SetStateAction<Record<WmsLayerKind, LayerStatus>>>,
 ) {
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !url || !layerName) {
+    if (!map) {
       return;
     }
 
-    const { layer, source } = createWmsLayer(kind, { layer: layerName, url });
-    layer.setVisible(visibilityRef.current[kind]);
-    if (kind === "readiness" || kind === "forecast") {
-      layer.setOpacity(opacityRef.current);
-    }
-
-    const update = (next: LayerStatus) => setStatus((current) => (current[kind] === next ? current : { ...current, [kind]: next }));
-    source.on("imageloadstart", () => update("loading"));
-    source.on("imageloadend", () => update("loaded"));
-    source.on("imageloaderror", () => update("error"));
-
-    map.addLayer(layer);
     const registry = wmsRef.current;
-    registry[kind] = { layer, source };
-
-    return () => {
-      map.removeLayer(layer);
-      if (registry[kind]?.layer === layer) {
+    const update = (next: LayerStatus) => setStatus((current) => (current[kind] === next ? current : { ...current, [kind]: next }));
+    const drop = () => {
+      const stale = registry[kind];
+      if (stale) {
+        map.removeLayer(stale.layer);
         delete registry[kind];
       }
       update("idle");
     };
-  }, [kind, layerName, mapRef, opacityRef, setStatus, url, visibilityRef, wmsRef]);
+
+    if (!url || !layerName) {
+      drop();
+      return;
+    }
+
+    // Only a layer that is on screen and shows this same section is worth
+    // waiting for the replacement behind: a hidden layer has nothing to
+    // protect, and another section's image stretched over the new extent would
+    // be a lie rather than a smoother swap.
+    const current = registry[kind];
+    const handover = current !== undefined && current.groupKey === groupKey && visibilityRef.current[kind];
+    if (!handover) {
+      drop();
+    }
+
+    let incoming: WmsEntry | null = null;
+    let promoted = false;
+
+    const promote = () => {
+      if (promoted || !incoming) {
+        return;
+      }
+      promoted = true;
+      const outgoing = registry[kind];
+      registry[kind] = incoming;
+      if (outgoing && outgoing.layer !== incoming.layer) {
+        map.removeLayer(outgoing.layer);
+      }
+      // Toggles made while the image was in flight only reached the layer that
+      // was on screen, so the newcomer picks them up as it takes over.
+      incoming.layer.setVisible(visibilityRef.current[kind]);
+      if (kind === "readiness" || kind === "forecast") {
+        incoming.layer.setOpacity(opacityRef.current);
+      }
+    };
+
+    const start = () => {
+      const { layer, source } = createWmsLayer(kind, { layer: layerName, url });
+      layer.setVisible(visibilityRef.current[kind]);
+      if (kind === "readiness" || kind === "forecast") {
+        layer.setOpacity(opacityRef.current);
+      }
+
+      source.on("imageloadstart", () => update("loading"));
+      // An error promotes too: the map has to stop showing an image the user is
+      // no longer looking at, and the retry chip must act on the layer that failed.
+      source.on("imageloadend", () => {
+        promote();
+        update("loaded");
+      });
+      source.on("imageloaderror", () => {
+        promote();
+        update("error");
+      });
+
+      incoming = { groupKey, layer, source };
+      map.addLayer(layer);
+      if (!handover) {
+        promote();
+      }
+    };
+
+    const timer = handover ? window.setTimeout(start, SWAP_DEBOUNCE_MS) : undefined;
+    if (!handover) {
+      start();
+    }
+
+    return () => {
+      window.clearTimeout(timer);
+      // Superseded before it ever painted: take it back off the map and leave
+      // what is on screen alone, for the next run to replace in its turn.
+      if (incoming && !promoted) {
+        map.removeLayer(incoming.layer);
+      }
+    };
+  }, [groupKey, kind, layerName, mapRef, opacityRef, setStatus, url, visibilityRef, wmsRef]);
+
+  // The swap effect deliberately leaves the layer that is on screen attached,
+  // so going away is the only moment left to take it off the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    const registry = wmsRef.current;
+    return () => {
+      const entry = registry[kind];
+      if (entry) {
+        map?.removeLayer(entry.layer);
+        delete registry[kind];
+      }
+    };
+  }, [kind, mapRef, wmsRef]);
 }

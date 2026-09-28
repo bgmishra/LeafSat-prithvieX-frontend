@@ -6,10 +6,24 @@ import { ArrowLeft, Check, ChevronLeft, ChevronRight, Cloud, Copy, Crosshair, Sa
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { formatUtc, formatDate } from "@/lib/format";
-import { isActiveRunStatus, markSharedResultViewedFor, type ModelRunResultDetail, type SceneInfo, type SceneSearch, type WmsLayerInfo, type WmsLayerKind } from "@/lib/model-runs";
+import { formatUtc, formatDate, pluralize } from "@/lib/format";
+import {
+  IMAGERY_SENSORS,
+  imageryTimeline,
+  isActiveRunStatus,
+  markSharedResultViewedFor,
+  type ImageryPass,
+  type ImagerySensor,
+  type ImageryTimeline,
+  type ModelRunResultDetail,
+  type SceneInfo,
+  type SceneSearch,
+  type WmsLayerInfo,
+  type WmsLayerKind,
+} from "@/lib/model-runs";
 import { cn } from "@/lib/utils";
 import { IconEmptyState } from "./IconEmptyState";
+import { ImageryTimelineControl, SENSOR_LABELS } from "./ImageryTimelineControl";
 import { ReadinessLegend } from "./ReadinessLegend";
 import { ReadinessResultMap, type LayerVisibility } from "./ReadinessResultMap";
 import { useModelProduct } from "./model-product";
@@ -20,12 +34,12 @@ import { ShareResultDialog } from "./ShareResultDialog";
 import type { RunDetailState } from "./useRunDetail";
 import { useAuth } from "@/store/auth-provider";
 
-const SCENE_TITLES: Record<"sentinel2" | "landsat", string> = {
+const SCENE_TITLES: Record<ImagerySensor, string> = {
   sentinel2: "Sentinel-2 L2A",
   landsat: "Landsat Collection 2 L2",
 };
 
-function noSceneMessage(kind: "sentinel2" | "landsat", search: SceneSearch | undefined) {
+function noSceneMessage(kind: ImagerySensor, search: SceneSearch | undefined) {
   const window = search ? `in the last ${search.lookback_days} days` : "in the search window";
   return kind === "sentinel2"
     ? `No acceptable Sentinel-2 scene found ${window}${search ? ` (cloud cover under ${search.max_cloud}%)` : ""}.`
@@ -113,7 +127,7 @@ function SceneCard({
   scene,
   search,
 }: {
-  kind: "sentinel2" | "landsat";
+  kind: ImagerySensor;
   pending: boolean;
   scene: SceneInfo;
   /** The run's scene search, so the copy states what that run actually searched. */
@@ -166,14 +180,19 @@ function SceneCard({
   );
 }
 
-function hudText(result: ModelRunResultDetail, visibility: LayerVisibility) {
+/** The chip over the map names the passes actually drawn, so it follows the slider. */
+function hudText(
+  result: ModelRunResultDetail,
+  visibility: LayerVisibility,
+  selected: Record<ImagerySensor, ImageryPass | null>,
+) {
   const name = result.section_railway_id || result.section_label;
   const parts = [name];
-  if (visibility.sentinel2 && result.sentinel2.wms) {
-    parts.push(`Sentinel-2 ${formatDate(result.sentinel2.datetime)}`);
-  }
-  if (visibility.landsat && result.landsat.wms) {
-    parts.push(`Landsat ${formatDate(result.landsat.datetime)}`);
+  for (const sensor of IMAGERY_SENSORS) {
+    const pass = selected[sensor];
+    if (visibility[sensor] && pass) {
+      parts.push(`${SENSOR_LABELS[sensor]} ${formatDate(pass.datetime)}`);
+    }
   }
   return parts.join(" · ");
 }
@@ -191,9 +210,11 @@ export function SectionResultViewer({
   const product = useModelProduct();
   const { primaryLayer, resultsHref, viewer } = product;
   const { isAuthenticated } = useAuth();
-  // Field supervisors receive shared results; the people who run models share them.
-  const { isAdmin, isClientSuperAdmin, isEngineer, isFieldSupervisor } = useAuthUser({ enabled: isAuthenticated });
-  const canShare = isAdmin || isClientSuperAdmin || isEngineer;
+  // Field supervisors receive shared results; the people who run models share
+  // them. Sharing happens inside one company, so a LeafSat system admin has
+  // nobody to share with and the API refuses them.
+  const { isClientSuperAdmin, isEngineer, isFieldSupervisor } = useAuthUser({ enabled: isAuthenticated });
+  const canShare = isClientSuperAdmin || isEngineer;
   const [visibility, setVisibility] = useState<LayerVisibility>({
     forecast: true,
     landsat: false,
@@ -203,6 +224,20 @@ export function SectionResultViewer({
   });
   const [opacity, setOpacity] = useState(75);
   const [zoomNonce, setZoomNonce] = useState(0);
+  // Where each sensor's slider is parked, and which result that was parked on.
+  //
+  // Null — including the null a stale result id reads as — means "whatever the
+  // newest pass is". So the map opens on the same image the singular scene
+  // keys have always shown; a run that is still finding passes keeps moving
+  // forward with them rather than freezing on whichever pass was last when the
+  // page first painted; and walking to the next section starts on its own
+  // newest pass instead of inheriting an index that means a different date
+  // there. Visibility and opacity are settings and do follow you across
+  // sections, which is why they are not kept here.
+  const [passIndex, setPassIndex] = useState<{ landsat: number | null; result: number; sentinel2: number | null } | null>(
+    null,
+  );
+  const [scrubbed, setScrubbed] = useState<ImagerySensor>("sentinel2");
 
   const results = run?.results ?? [];
   const index = results.findIndex((item) => item.section === sectionId);
@@ -263,19 +298,39 @@ export function SectionResultViewer({
   const primary = product.primaryInfo(result);
   const synthetic = result.is_synthetic || primary.is_synthetic;
   const targetDate = viewer.targetDate?.(result, run) ?? null;
-  // Readiness: its raster plus the two imagery layers. Forecast: its raster only.
+  const timelines: Record<ImagerySensor, ImageryTimeline> = {
+    landsat: imageryTimeline(result, "landsat"),
+    sentinel2: imageryTimeline(result, "sentinel2"),
+  };
+  const passAt = (sensor: ImagerySensor) => {
+    const count = timelines[sensor].passes.length;
+    const chosen = passIndex?.result === result.id ? passIndex[sensor] : null;
+    return chosen === null ? count - 1 : Math.min(Math.max(chosen, 0), count - 1);
+  };
+  const selectedPass: Record<ImagerySensor, ImageryPass | null> = {
+    landsat: timelines.landsat.passes[passAt("landsat")] ?? null,
+    sentinel2: timelines.sentinel2.passes[passAt("sentinel2")] ?? null,
+  };
+
+  // Readiness: its raster plus the two imagery layers, each showing the pass
+  // the slider is parked on. Forecast: its raster only.
   const wms: Record<WmsLayerKind, WmsLayerInfo | null> = viewer.hasImagery
     ? {
         forecast: null,
-        landsat: result.landsat.wms,
+        landsat: selectedPass.landsat?.wms ?? null,
         readiness: result.readiness.wms,
-        sentinel2: result.sentinel2.wms,
+        sentinel2: selectedPass.sentinel2?.wms ?? null,
       }
     : { forecast: null, landsat: null, readiness: null, sentinel2: null, [primaryLayer]: primary.wms };
   const primaryOn = visibility[primaryLayer] && Boolean(wms[primaryLayer]);
   const setLayer = (key: keyof LayerVisibility) => (value: boolean) =>
     setVisibility((current) => ({ ...current, [key]: value }));
   const title = result.section_railway_id || result.section_label || `Section #${result.section}`;
+  // The slider drives whichever imagery layer is actually on. With both on,
+  // the segmented control decides; with a single pass there is nothing to
+  // scrub, so that sensor is not offered and the control disappears entirely.
+  const scrubbable = IMAGERY_SENSORS.filter((sensor) => visibility[sensor] && timelines[sensor].passes.length > 1);
+  const scrubSensor = scrubbable.includes(scrubbed) ? scrubbed : (scrubbable[0] ?? null);
 
   const legend = (
     <ReadinessLegend
@@ -417,32 +472,42 @@ export function SectionResultViewer({
               </div>
               {viewer.hasImagery ? (
                 <>
-                  <Switch
-                    checked={visibility.sentinel2 && Boolean(wms.sentinel2)}
-                    description={
-                      wms.sentinel2
-                        ? `True colour · ${formatDate(result.sentinel2.datetime)}`
-                        : result.sentinel2.datetime
-                          ? "Image not published yet"
-                          : "No scene available"
-                    }
-                    disabled={!wms.sentinel2}
-                    label="Sentinel-2 true colour"
-                    onChange={setLayer("sentinel2")}
-                  />
-                  <Switch
-                    checked={visibility.landsat && Boolean(wms.landsat)}
-                    description={
-                      wms.landsat
-                        ? `True colour · ${formatDate(result.landsat.datetime)}`
-                        : result.landsat.datetime
-                          ? "Image not published yet"
-                          : "No scene available"
-                    }
-                    disabled={!wms.landsat}
-                    label="Landsat true colour"
-                    onChange={setLayer("landsat")}
-                  />
+                  {IMAGERY_SENSORS.map((sensor) => {
+                    const pass = selectedPass[sensor];
+                    const count = timelines[sensor].passes.length;
+                    return (
+                      <Switch
+                        checked={visibility[sensor] && Boolean(wms[sensor])}
+                        description={
+                          pass
+                            ? `True colour · ${formatDate(pass.datetime)}${count > 1 ? ` · ${pluralize(count, "pass", "passes")}` : ""}`
+                            : result[sensor].datetime
+                              ? "Image not published yet"
+                              : "No scene available"
+                        }
+                        disabled={!wms[sensor]}
+                        key={sensor}
+                        label={`${SENSOR_LABELS[sensor]} true colour`}
+                        onChange={setLayer(sensor)}
+                      />
+                    );
+                  })}
+                  {scrubSensor ? (
+                    <ImageryTimelineControl
+                      index={passAt(scrubSensor)}
+                      key={scrubSensor}
+                      onIndexChange={(next) =>
+                        setPassIndex((current) => ({
+                          ...(current?.result === result.id ? current : { landsat: null, result: result.id, sentinel2: null }),
+                          [scrubSensor]: next,
+                        }))
+                      }
+                      onSensorChange={setScrubbed}
+                      sensor={scrubSensor}
+                      sensors={scrubbable}
+                      timeline={timelines[scrubSensor]}
+                    />
+                  ) : null}
                 </>
               ) : null}
               <Switch checked={visibility.outline} label="Section outline" onChange={setLayer("outline")} />
@@ -501,7 +566,7 @@ export function SectionResultViewer({
             bbox={result.bbox}
             className="h-full w-full"
             failed={failed}
-            hudLabel={viewer.hudLabel ? viewer.hudLabel(result, run) : hudText(result, visibility)}
+            hudLabel={viewer.hudLabel ? viewer.hudLabel(result, run) : hudText(result, visibility, selectedPass)}
             isSynthetic={synthetic}
             label={title}
             legend={legend}

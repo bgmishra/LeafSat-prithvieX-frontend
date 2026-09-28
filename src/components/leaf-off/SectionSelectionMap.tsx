@@ -7,14 +7,13 @@ import Map from "ol/Map";
 import View from "ol/View";
 import GeoJSON from "ol/format/GeoJSON";
 import VectorLayer from "ol/layer/Vector";
-import { transformExtent } from "ol/proj";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import { createEmpty, extend, isEmpty, type Extent } from "ol/extent";
 import LayerSwitcherImage from "ol-ext/control/LayerSwitcherImage.js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { UK_EXTENT_LONLAT, createBaseLayers, fitDuration } from "./map-base-layers";
+import { createBaseLayers, fitDuration, fitToUnitedKingdom } from "./map-base-layers";
 
 export type SelectableSection = {
   id: number;
@@ -159,7 +158,7 @@ export function SectionSelectionMap({
       target,
       view: new View({ center: [0, 0], zoom: 2 }),
     });
-    map.getView().fit(transformExtent(UK_EXTENT_LONLAT, "EPSG:4326", "EPSG:3857"), { padding: [24, 24, 24, 24] });
+    fitToUnitedKingdom(map);
 
     const layerSwitcher = new LayerSwitcherImage({ collapsed: false });
     layerSwitcher.isOpen(true);

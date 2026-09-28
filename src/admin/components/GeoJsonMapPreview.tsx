@@ -8,11 +8,11 @@ import GeoJSON from "ol/format/GeoJSON";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import LayerSwitcherImage from "ol-ext/control/LayerSwitcherImage.js";
-import { fromLonLat, transformExtent } from "ol/proj";
 import OSM from "ol/source/OSM";
 import VectorSource from "ol/source/Vector";
 import XYZSource from "ol/source/XYZ";
 import { Fill, Stroke, Style } from "ol/style";
+import { fitToUnitedKingdom } from "@/components/leaf-off/map-base-layers";
 
 function readGeometryFeatures(geometry: unknown): { error: string; features: Feature[] } {
   if (!geometry) {
@@ -38,7 +38,6 @@ function readGeometryFeatures(geometry: unknown): { error: string; features: Fea
 const DEFAULT_CLASS_NAME = "h-80 w-full overflow-hidden rounded-md border border-slate-200";
 // Rough bounding box for the UK (west, south, east, north) in EPSG:4326, used as
 // the map's default view whenever there is no boundary to fit to.
-const UK_EXTENT_LONLAT: [number, number, number, number] = [-8.65, 49.82, 1.76, 60.85];
 
 /** Renders a single GeoJSON Polygon/MultiPolygon geometry on an OpenLayers map. */
 export function GeoJsonMapPreview({
@@ -93,10 +92,7 @@ export function GeoJsonMapPreview({
     const map = new Map({
       layers: [satellite, osm, openTopomap, vectorLayer],
       target: targetRef.current,
-      view: new View({
-        center: fromLonLat([84.124, 28.3949]),
-        zoom: 6.6,
-      }),
+      view: new View({ center: [0, 0], zoom: 2 }),
     });
     mapRef.current = map;
 
@@ -110,7 +106,7 @@ export function GeoJsonMapPreview({
         map.getView().fit(extent, { duration: 250, maxZoom: 17, padding: [24, 24, 24, 24] });
       }
     } else {
-      map.getView().fit(transformExtent(UK_EXTENT_LONLAT, "EPSG:4326", "EPSG:3857"), { padding: [24, 24, 24, 24] });
+      fitToUnitedKingdom(map);
     }
 
     const resizeObserver = new ResizeObserver(() => map.updateSize());

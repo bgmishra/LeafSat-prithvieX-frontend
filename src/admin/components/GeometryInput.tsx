@@ -8,11 +8,11 @@ import Draw from "ol/interaction/Draw";
 import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import Map from "ol/Map";
-import { fromLonLat } from "ol/proj";
 import OSM from "ol/source/OSM";
 import VectorSource from "ol/source/Vector";
 import { Fill, Stroke, Style } from "ol/style";
 import View from "ol/View";
+import { fitToUnitedKingdom } from "@/components/leaf-off/map-base-layers";
 import type { BackendValidationErrors, ResourceField } from "@/admin/types/resources";
 import { FieldErrorText, getFieldError } from "./FormFields";
 
@@ -71,8 +71,10 @@ export function GeometryInput({
     const map = new Map({
       layers: [osm, vectorLayer],
       target: mapTargetRef.current,
-      view: new View({ center: fromLonLat([84.124, 28.3949]), zoom: 6.6 }),
+      view: new View({ center: [0, 0], zoom: 2 }),
     });
+    // Nothing is drawn yet, so the country is the starting view.
+    fitToUnitedKingdom(map);
     mapRef.current = map;
 
     const draw = new Draw({ source: vectorSourceRef.current, type: GeometryType.POLYGON });

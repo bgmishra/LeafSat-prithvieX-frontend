@@ -87,6 +87,44 @@ export type SceneInfo = {
   wms: WmsLayerInfo | null;
 };
 
+/** The two sensors a readiness run images a section with, in the order they are offered. */
+export type ImagerySensor = "sentinel2" | "landsat";
+
+export const IMAGERY_SENSORS: ImagerySensor[] = ["sentinel2", "landsat"];
+
+/**
+ * One satellite pass over a section inside the run's imagery window.
+ *
+ * `wms` is null when the pass was found but its image has not been published
+ * to the map server, so a pass is a date first and a picture second. `item_id`
+ * and `datetime` are nullable because this same shape carries the one-entry
+ * timeline folded out of the older singular scene keys, where a section that
+ * never got a scene leaves them empty.
+ */
+export type ImageryPass = {
+  /**
+   * The backend's id for the pass, and null for a frame it had no row for -
+   * an older result folded out of the singular scene keys, on either side of
+   * the wire. It is opaque: load a pass through `wms.url`, never by building a
+   * URL from this.
+   */
+  id: number | null;
+  item_id: string | null;
+  datetime: string | null;
+  cloud_cover: number | null;
+  wms: WmsLayerInfo | null;
+};
+
+/**
+ * Every pass each sensor made over the section in the run's one-month window,
+ * chronological, oldest first. Absent on results produced before the window
+ * was recorded, so read it through `imageryTimeline()` rather than directly.
+ */
+export type ResultImagery = {
+  sentinel2: ImageryPass[];
+  landsat: ImageryPass[];
+};
+
 export type ReadinessInfo = {
   is_synthetic: boolean;
   value_min: number | null;
@@ -130,6 +168,13 @@ export type ModelRunResult = {
   is_synthetic: boolean;
   sentinel2: SceneInfo;
   landsat: SceneInfo;
+  /**
+   * Every pass in the run's window, per sensor. The singular `sentinel2` and
+   * `landsat` keys above still carry the one scene the model actually used and
+   * are unchanged; this is the scrubbable timeline around it. Absent (or null)
+   * on older payloads and on a backend that has not shipped it yet.
+   */
+  imagery?: ResultImagery | null;
   readiness: ReadinessInfo;
   /** Forecast runs only; null (or absent on older payloads) for readiness. */
   forecast?: ForecastInfo | null;
@@ -325,6 +370,38 @@ export function resultLabel(result: Pick<
 /** Sections that have reached a terminal per-section state. */
 export function finishedCount(counts: ModelRunResultCounts) {
   return counts.succeeded + counts.failed;
+}
+
+/** One sensor's passes over a section, ready to put on a slider. */
+export type ImageryTimeline = {
+  /** Passes that can actually be drawn, oldest first. */
+  passes: ImageryPass[];
+  /** Passes found in the window whose image is not published, so not on the axis. */
+  pending: number;
+};
+
+/**
+ * The timeline the viewer scrubs for one sensor.
+ *
+ * Three payloads reach this: a result with the full window, a result from
+ * before the window existed, and a result still being processed. Folding the
+ * singular scene key into a one-entry timeline means the viewer only ever
+ * deals with a list, and a run that predates the window behaves exactly as it
+ * always has — one pass, nothing to scrub.
+ *
+ * Passes with no WMS layer are left off the axis rather than marked on it: a
+ * native range input cannot be made to skip its own steps, so keeping them
+ * would drop blank frames into the middle of a drag. `pending` keeps them
+ * honest by counting them for the caption.
+ */
+export function imageryTimeline(result: ModelRunResult, sensor: ImagerySensor): ImageryTimeline {
+  const found = result.imagery?.[sensor];
+  if (found && found.length > 0) {
+    const passes = found.filter((pass) => pass.wms);
+    return { passes, pending: found.length - passes.length };
+  }
+  const scene = result[sensor];
+  return { passes: scene.wms ? [{ ...scene, id: null }] : [], pending: 0 };
 }
 
 // -- Sharing a section's result with field supervisors ------------------------

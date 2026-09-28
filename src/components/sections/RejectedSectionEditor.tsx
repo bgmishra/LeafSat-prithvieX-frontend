@@ -15,6 +15,7 @@ import XYZSource from "ol/source/XYZ";
 import { Circle, Fill, Stroke, Style } from "ol/style";
 import LayerSwitcherImage from "ol-ext/control/LayerSwitcherImage.js";
 import ModifyFeature from "ol-ext/interaction/ModifyFeature.js";
+import { fitToUnitedKingdom } from "@/components/leaf-off/map-base-layers";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage, TextField } from "@/components/ui";
 import {
@@ -131,6 +132,12 @@ export function RejectedSectionEditor({
     const features = featuresFromGeometry(geometry);
     if (features.length === 0) {
       setGeojson(null);
+      // A rejected section normally arrives with the outline that was turned
+      // down, but one can be cleared or unreadable. Fall back to the country
+      // rather than leaving the editor parked on the mid-Atlantic.
+      if (mapRef.current) {
+        fitToUnitedKingdom(mapRef.current, 32);
+      }
       return;
     }
 

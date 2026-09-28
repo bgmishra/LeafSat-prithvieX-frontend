@@ -189,7 +189,7 @@ export function LeafOffRunModelWorkspace({ extension }: { extension?: RunModelEx
   const { modelType, runPage } = product;
   const storageKey = runPage.lastRunStorageKey;
   const { isAuthenticated, isReady } = useAuth();
-  const { isAdmin, user } = useAuthUser({ enabled: isAuthenticated });
+  const { user } = useAuthUser({ enabled: isAuthenticated });
   const { notify } = useToast();
   const listId = useId();
   const helperId = useId();
@@ -293,7 +293,9 @@ export function LeafOffRunModelWorkspace({ extension }: { extension?: RunModelEx
     [sections],
   );
   const organizations = useMemo(() => new Set(sections.map((section) => section.organization)), [sections]);
-  const showOrganization = isAdmin || organizations.size > 1;
+  // Every section here belongs to the caller's own company, so this is a
+  // backstop rather than a case the API can produce.
+  const showOrganization = organizations.size > 1;
 
   const shown = useMemo(
     () => sorted.filter((section) => (!railway || section.railway_name === railway) && matchesSearch(section, query)),

@@ -30,6 +30,12 @@ export type NavItem = {
   clientOnly?: boolean;
   sectionManagerOnly?: boolean;
   clientSuperAdminOnly?: boolean;
+  /**
+   * Reads a client company's own data, so it is closed to a LeafSat system
+   * admin the way the API closes it: they have no company, and a company's
+   * track data is not theirs to read. Signed-out visitors still see the item.
+   */
+  companyDataOnly?: boolean;
 };
 
 export type NavGroup = { id: string; label: string | null; items: NavItem[] };
@@ -49,6 +55,7 @@ export const navGroups: NavGroup[] = [
         label: "Leaf-Off Readiness",
         href: "/leaf-off-readiness",
         icon: LeafIcon,
+        companyDataOnly: true,
         children: [
           { label: "Run Model", href: "/leaf-off-readiness/run-model" },
           { label: "View Model Results", href: "/leaf-off-readiness/results" },
@@ -60,6 +67,7 @@ export const navGroups: NavGroup[] = [
         label: "Leaf-Off Forecast",
         href: "/leaf-off-forecast",
         icon: ChartIcon,
+        companyDataOnly: true,
         children: [
           { label: "Run Forecast Model", href: "/leaf-off-forecast/run-model" },
           { label: "View Model Results", href: "/leaf-off-forecast/results" },
@@ -128,6 +136,12 @@ export type NavAccess = {
 export function isVisible(item: NavItem, access: NavAccess) {
   const { isAuthenticated, isAdmin, isClientSuperAdmin, isEngineer, isClientUser } = access;
 
+  // A deny, so it comes first. A system admin who is also a member of a client
+  // company is that company's member here, exactly as the API treats them.
+  if (item.companyDataOnly && isAuthenticated && isAdmin && !isClientUser) {
+    return false;
+  }
+
   if (item.adminOnly) {
     return isAuthenticated && isAdmin;
   }
@@ -149,7 +163,13 @@ export function isVisible(item: NavItem, access: NavAccess) {
 
 /** Gated on the signed-in user's profile, so unknown until it loads. */
 export function isRoleGated(item: NavItem) {
-  return Boolean(item.adminOnly || item.clientSuperAdminOnly || item.sectionManagerOnly || item.clientOnly);
+  return Boolean(
+    item.adminOnly ||
+      item.clientSuperAdminOnly ||
+      item.sectionManagerOnly ||
+      item.clientOnly ||
+      item.companyDataOnly,
+  );
 }
 
 export function matchesPath(pathname: string, href: string, exact = false) {
