@@ -125,8 +125,30 @@ export type ResultImagery = {
   landsat: ImageryPass[];
 };
 
+/** Summary of the real readiness model run (the Biological Readiness Index). */
+export type ReadinessModelInfo = {
+  name: string;
+  label: string;
+  version: string;
+  parameters_status: string;
+  /** False while the model runs on placeholder parameters. */
+  calibrated: boolean;
+  target_date: string;
+  temperature_last_day_used: string | null;
+  sentinel2_current_dates_count: number;
+  sentinel2_last_date: string | null;
+  mask_source: string | null;
+  broadleaf_pixel_count: number | null;
+  drought_mean_z: number | null;
+  crs: string | null;
+  warnings: string[];
+  run_time_s: number | null;
+};
+
 export type ReadinessInfo = {
   is_synthetic: boolean;
+  /** Set for results produced by the BRI model; null for synthetic, forecast and older results. */
+  model?: ReadinessModelInfo | null;
   value_min: number | null;
   value_max: number | null;
   /** e.g. "1.0 = ready (leaf-off), 0.0 = not ready". */

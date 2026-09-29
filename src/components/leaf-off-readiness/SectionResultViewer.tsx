@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Cloud, Copy, Crosshair, Satellite, SearchX, XCircle } from "lucide-react";
 import { useAuthUser } from "@/admin/hooks/useAuthUser";
@@ -16,6 +16,7 @@ import {
   type ImagerySensor,
   type ImageryTimeline,
   type ModelRunResultDetail,
+  type ReadinessModelInfo,
   type SceneInfo,
   type SceneSearch,
   type WmsLayerInfo,
@@ -28,7 +29,7 @@ import { ReadinessLegend } from "./ReadinessLegend";
 import { ReadinessResultMap, type LayerVisibility } from "./ReadinessResultMap";
 import { useModelProduct } from "./model-product";
 import { RESULTS_HEADING_ID } from "./results-routes";
-import { SyntheticNotice } from "./RunDetailView";
+import { SyntheticNotice, UncalibratedModelNotice } from "./RunDetailView";
 import { RunStatusBadge } from "./RunStatusBadge";
 import { ShareResultDialog } from "./ShareResultDialog";
 import type { RunDetailState } from "./useRunDetail";
@@ -296,7 +297,9 @@ export function SectionResultViewer({
   const pending = isActiveRunStatus(result.status);
   const failed = result.status === "failed";
   const primary = product.primaryInfo(result);
-  const synthetic = result.is_synthetic || primary.is_synthetic;
+  // Failed rows keep the backend's default synthetic flag; only a finished map is synthetic or not.
+  const synthetic = result.status === "succeeded" && (result.is_synthetic || primary.is_synthetic);
+  const model = result.status === "succeeded" ? (result.readiness?.model ?? null) : null;
   const targetDate = viewer.targetDate?.(result, run) ?? null;
   const timelines: Record<ImagerySensor, ImageryTimeline> = {
     landsat: imageryTimeline(result, "landsat"),
@@ -422,6 +425,8 @@ export function SectionResultViewer({
 
           <div className="flex-1 space-y-5 p-5 lg:min-h-0 lg:overflow-y-auto">
             {synthetic ? <SyntheticNotice /> : null}
+            {model && !model.calibrated ? <UncalibratedModelNotice /> : null}
+            {model ? <ReadinessModelCard model={model} /> : null}
 
             {failed ? (
               <Alert className="flex gap-2" role="alert" variant="destructive">
@@ -585,5 +590,47 @@ export function SectionResultViewer({
         </section>
       </div>
     </div>
+  );
+}
+
+/** What the Biological Readiness Index used for this section, so a map can be judged by its inputs. */
+function ReadinessModelCard({ model }: { model: ReadinessModelInfo }) {
+  const rows: Array<[string, string]> = [
+    ["Readiness on", model.target_date],
+    ["Temperature to", model.temperature_last_day_used ?? "—"],
+    [
+      "Sentinel-2",
+      model.sentinel2_last_date
+        ? `${model.sentinel2_current_dates_count} dates this season, latest ${model.sentinel2_last_date}`
+        : "No clear dates this season",
+    ],
+    [
+      "Broadleaf area",
+      model.broadleaf_pixel_count != null
+        ? `${((model.broadleaf_pixel_count * 100) / 1_000_000).toFixed(2)} km² (${model.broadleaf_pixel_count.toLocaleString()} px)`
+        : "—",
+    ],
+  ];
+  return (
+    <section className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <h3 className="text-sm font-semibold text-slate-950">
+        {model.label} <span className="font-normal text-slate-500">· v{model.version}</span>
+      </h3>
+      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        {rows.map(([label, value]) => (
+          <Fragment key={label}>
+            <dt className="text-slate-500">{label}</dt>
+            <dd className="text-xs leading-5 text-slate-800">{value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      {model.warnings.length > 0 ? (
+        <ul className="mt-2 space-y-1 text-xs text-amber-800">
+          {model.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }

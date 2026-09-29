@@ -219,7 +219,7 @@ function SharedResultCard({ item, onOpen, product }: { item: SharedResult; onOpe
               </span>
             ) : null}
             <RunStatusBadge size="sm" status={result.status} />
-            {result.is_synthetic || product.primaryInfo(result).is_synthetic ? <SyntheticBadge /> : null}
+            {result.status === "succeeded" && (result.is_synthetic || product.primaryInfo(result).is_synthetic) ? <SyntheticBadge /> : null}
           </div>
           <p className="text-sm text-slate-600">
             Shared by <span className="font-medium text-slate-800">{sender}</span> at {formatTime(item.shared_at)} · Run #

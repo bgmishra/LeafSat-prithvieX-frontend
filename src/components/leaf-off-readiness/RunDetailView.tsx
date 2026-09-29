@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, FlaskConical, Map as MapIcon, RotateCw, SearchX } from "lucide-react";
+import { ArrowLeft, FlaskConical, Map as MapIcon, RotateCw, SearchX, TriangleAlert } from "lucide-react";
 import { Panel } from "@/components/ui";
 import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -30,6 +30,34 @@ export function SyntheticNotice({ className }: { className?: string }) {
       </p>
     </div>
   );
+}
+
+/**
+ * The readiness map comes from the Biological Readiness Index, still running
+ * on placeholder parameters. Replaces the synthetic notice for real results.
+ */
+export function UncalibratedModelNotice({ className }: { className?: string }) {
+  return (
+    <div
+      className={`flex gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 ${className ?? ""}`}
+    >
+      <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <p>
+        <strong className="font-semibold">Uncalibrated model parameters.</strong> Readiness comes from the Biological
+        Readiness Index (Sentinel-2, ERA5-Land weather, elevation) with placeholder parameters, so treat values as
+        relative. Only broadleaf trees are mapped; the rest of the section is left clear.
+      </p>
+    </div>
+  );
+}
+
+/** A result counts as synthetic only once it has succeeded; failed rows keep the backend's default flag. */
+export function isSyntheticResult(result: ModelRunResult, product: ModelProduct) {
+  return result.status === "succeeded" && (result.is_synthetic || product.primaryInfo(result).is_synthetic);
+}
+
+export function isUncalibratedResult(result: ModelRunResult) {
+  return result.status === "succeeded" && result.readiness?.model?.calibrated === false;
 }
 
 function ErrorText({ message }: { message: string }) {
@@ -159,7 +187,8 @@ function RunDetailBody({
   run: ModelRunDetail;
 }) {
   const counts = run.result_counts;
-  const anySynthetic = run.results.some((result) => result.is_synthetic || product.primaryInfo(result).is_synthetic);
+  const anySynthetic = run.results.some((result) => isSyntheticResult(result, product));
+  const anyUncalibrated = run.results.some(isUncalibratedResult);
   const { columns, facts } = product.runDetail;
   const { resultsHref } = product;
   const active = isActiveRunStatus(run.status);
@@ -227,6 +256,7 @@ function RunDetailBody({
           <Alert>This run is waiting to start. Sections appear here as they&apos;re processed.</Alert>
         ) : null}
         {anySynthetic ? <SyntheticNotice /> : null}
+        {anyUncalibrated ? <UncalibratedModelNotice /> : null}
       </div>
 
       <Panel className="overflow-hidden [&>div]:p-0">
